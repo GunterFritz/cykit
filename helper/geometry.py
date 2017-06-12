@@ -55,7 +55,7 @@ class Geometry:
 	def topToPoint(self, start, rect, point):
 		#end point is above start point
 		if point.y() < start.y() + self.grid:
-			return self.zLine(start, point, 'H')
+			return self.lLine(start, point, 'H')
 		#end point is above start point, but near to rect
 		elif point.y() < start.y():
 			return self.uLine(start, point, "bottom", self.grid * 2)
@@ -76,6 +76,26 @@ class Geometry:
 				length = rect.topRight().x() -start.x() + 2*self.grid
 			return lines + self.uLine(sp, point, op, length)
 			
+	def lLine(self, start, end, direction):
+		lines = []
+		if start.x() == end.x() or start.y() == end.y():
+			#both points are on same axis, draw single line
+			lines.append(QLineF(start, end))
+			return lines
+
+		if direction == 'H':
+			#second line is horizontal
+			p2 = QPointF(start.x(), end.y())
+		else:
+			#second line is vertical
+			p2 = QPointF(end.x(),start.y())
+		
+		#create lines
+		lines.append(QLineF(start, p2))
+		lines.append(QLineF(p2, end))
+		
+		return lines
+
 	def zLine(self, start, end, direction):
 		lines = []
 		if direction == 'H':
