@@ -281,9 +281,10 @@ class Arrow(QGraphicsLineItem):
 		#self.setLine(coordinates)
 
 	def drawLine(self, point, item):
-		self.setPoint2(point)
 		if item is not None:
-			self.setItem(item)
+			self.setItem2(item, point)
+		else:
+			self.setPoint2(point)
 		#trigger paint to update/ redraw
 		self.setLine(self.lines[-1])
 		#super().update(self.boundingRect())
@@ -298,6 +299,7 @@ class Arrow(QGraphicsLineItem):
 		self.lines = g.rectToPoint(self.startPoint, self.fromItem.getPositionalRect(), point) 
 
 	#called to draw the line temporarly
+	#obsolete	
 	def setPoint(self, point):
 		#clear
 		self.lines = []
@@ -313,9 +315,25 @@ class Arrow(QGraphicsLineItem):
 		if p2 != point:
 			self.addOrAppend(1, QLineF(p2,point))
 
-	def setItem(self, end, pos):
-		s2, self.endPoint = end.getNearestPoint(pos)
+	"""
+	saves second rectangle/Item and end point of a connection
 
+	params
+	------
+	end: RoundedRect
+	     second rectangle/ toItem
+	pos: QPointF
+	     position of mouse
+	"""
+	def setItem2(self, end, pos):
+		#save endPoint
+		s2, self.endPoint = end.getNearestPoint(pos)
+		#save endItem
+		self.toItem = end
+		g = Geometry()
+		self.lines = g.rectToRect(self.startPoint, self.fromItem.getPositionalRect(), self.endPoint, end.getPositionalRect()) 
+
+	#obsolete	
 	def setItem(self, end):
 		rect = end.getPositionalRect()
 		lines = []

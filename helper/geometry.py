@@ -34,19 +34,89 @@ class Geometry:
 					lines += uLine(start, end, "left")
 				line.append(QLineF(end, QPointF(x2, y2)))
 
-	def rectToPoint(self, start, rect, point):
+
+	#return the side where the point intersect rectangle
+	#return the angle that side of point is top
+	def getAngle(self, point, rect):
 		#line starts at top side
-		if start.y() == rect.topLeft().y():
-			return self.topToPoint(start, rect, point)
+		if point.y() == rect.topLeft().y():
+			return "top", 0
 		#line starts at left side
-		elif start.x() == rect.topLeft().x():
-			angle = 90
+		elif point.x() == rect.topLeft().x():
+			return "left", 90
 		#line starts at bottom side
-		elif start.y() == rect.bottomLeft().y():
-			angle = 180
+		elif point.y() == rect.bottomLeft().y():
+			return "bottom", 180
 		#line starts at right side
-		elif start.x() == rect.topRight().x():
-			angle = 270
+		elif point.x() == rect.topRight().x():
+			return "right", 270
+		return None, 0
+
+	"""
+	Calculates all lines from one rectangle to another, without intersecting
+	one of the rectangle
+
+	parmeters
+	---------
+	start: QPointF
+	       first point of lines
+	s_rect: QRectF 
+               first rectangle( start intersects s_rect)
+	end: QPointF
+	       last point of lines
+	s_rect: QRectF 
+               second rectangle( end intersects e_rect)
+	
+	return
+	---------
+	List of QLineF
+	"""
+	def rectToRect(self, start, s_rect, end, e_rect):
+		side, angle = self.getAngle(start, s_rect)
+		s = self.turnPoint(start, angle)
+		e = self.turnPoint(end, angle)
+		s_r = self.turnRect(s_rect, angle)
+		e_r = self.turnRect(e_rect, angle)
+		
+		return self.topToRect(s, s_r, e , e_r)
+
+	def topToRect(self, start, s_rect, end, e_rect):
+		side, angle = self.getAngle(end, e_rect)
+		if side == "top":
+			#draw from upper to lower rect
+			if s_rect.topLeft().y() < e_rect.topLeft().y():
+				return self.topTop(start, s_rect, end, e_rect)
+			else:
+				return self.topTop(end, s_rect, start, e_end)
+
+	"""
+	draw connection from upper side of rect1 to upper side of rect2
+	start, QPointF (start point)
+	upper, QRectF (upper rect)
+	end, QPointF (end point)
+	bottom, QRectF (bottom rect)
+	""" 
+	def topTop(self, start, upper, end, bottom):
+		if (end.x() < upper.topLeft().x() or
+			end.x() > upper.topRight().x()):
+			return self.uLine(start, end, "bottom", self.grid * 2)
+		#bottom rect is neath upper rect
+		lines = []
+		p1 = QPointF(start.x(), start.y() - 2*self.grid)
+		p2 = QPointF(end.x(), end.y() - 2*self.grid)
+		lines.append(QLineF(start, p1))
+		if start.x() > end.x():
+			op = "right"
+			length = start.x() - upper.topLeft().x() + 2*self.grid
+		else:
+			op = "left" 
+			length = upper.topRight().x() -start.x() + 2*self.grid
+		lines = lines + self.uLine(p1, p2, op, length)
+		lines.append(QLineF(p2, end))
+		return lines
+	
+	def rectToPoint(self, start, rect, point):
+		side, angle = self.getAngle(start, rect)
 		start = self.turnPoint(start,angle)
 		point = self.turnPoint(point,angle)
 		rect = self.turnRect(rect,angle)
@@ -115,7 +185,13 @@ class Geometry:
 		lines.append(QLineF(p3, end))
 		
 		return lines
-
+	"""
+	draw U from start to end
+	start QPointF
+	end QPointF
+	opening, side whithout line (top, right, left, bottom)
+	length, lenght of first line
+	"""
 	def uLine(self, start, end, opening, length):
 		angle = 0
 		lines = []
