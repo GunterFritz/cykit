@@ -87,7 +87,9 @@ class Geometry:
 			if s_rect.topLeft().y() < e_rect.topLeft().y():
 				return self.topTop(start, s_rect, end, e_rect)
 			else:
-				return self.topTop(end, s_rect, start, e_end)
+				return list(reversed(self.topTop(end, e_rect, start, s_rect)))
+		if side == "left":
+			return self.topTop(start, s_rect, end, e_rect)
 
 	"""
 	draw connection from upper side of rect1 to upper side of rect2
@@ -114,6 +116,47 @@ class Geometry:
 		lines = lines + self.uLine(p1, p2, op, length)
 		lines.append(QLineF(p2, end))
 		return lines
+
+	"""
+	Draws lines from top of first rect to left side of an second rectangle
+
+	parmeters
+	---------
+	start: QPointF
+	       first point of lines
+	s_rect: QRectF 
+               first rectangle( start intersects s_rect)
+	end: QPointF
+	       last point of lines
+	s_rect: QRectF 
+               second rectangle( end intersects e_rect)
+	
+	return
+	---------
+	List of QLineF
+	"""
+	def topLeft(self, start, s_rect, end, e_rect):
+		lines = []
+		if end.x() > start.x() and end.y() < start.y():
+			#end is above and left from start
+			return self.lLine(start, end, "H")
+		
+		#add line of grid length from start
+		p1 = QPointF(start.x(), start.y() - 2*self.grid)
+		lines.append(QLineF(start, p1))
+		if s_rect.topRight().x() < end.x() + 2*self.grid:
+			#end is right from s_rect
+			return lines + self.zLine(p1, p2, "H", start.x() + end.x() - s_rect.topRight().x())
+		
+		#add line of 2 grid length from end
+		p2 = QPointF(min(end.x(),s_rect.topLeft()) - 2*self.grid, end.y())
+		length = 2*self.grid 
+		if e_rect.topRight().y() < start.y():
+			length = length + start.y() - e_rect.topRight().y()
+		lines = lines + self.uLine(p1, p2, "bottom", length)
+		lines.append(QLineF(p2, end))
+		return lines
+		
 	
 	def rectToPoint(self, start, rect, point):
 		side, angle = self.getAngle(start, rect)
@@ -146,6 +189,23 @@ class Geometry:
 				length = rect.topRight().x() -start.x() + 2*self.grid
 			return lines + self.uLine(sp, point, op, length)
 			
+	"""
+	Calculates a line in form of "L" 
+
+	parmeters
+	---------
+	start: QPointF
+	       first point of lines
+	end: QPointF
+	     last point of lines
+	direction: String 
+               	   direction of second line, 
+		   H (horizontal)
+		   V (verticla)
+	return
+	---------
+	List of QLineF (2lines)
+	"""
 	def lLine(self, start, end, direction):
 		lines = []
 		if start.x() == end.x() or start.y() == end.y():
@@ -166,16 +226,16 @@ class Geometry:
 		
 		return lines
 
-	def zLine(self, start, end, direction):
+	def zLine(self, start, end, direction, length = 0):
 		lines = []
 		if direction == 'H':
 			#second line is horizontal
-			y = (start.y() + end.y())/2
+			y = (start.y() + end.y())/2 if length == 0 else length
 			p2 = QPointF(start.x(), y)
 			p3 = QPointF(end.x(), y)
 		else:
 			#second line is vertical
-			x = (start.x() + start.x())/2
+			x = (start.x() + start.x())/2 if length == 0 else length
 			p2 = QPointF(x,start.y())
 			p3 = QPointF(x,end.y())
 		
