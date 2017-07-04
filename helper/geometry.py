@@ -89,7 +89,7 @@ class Geometry:
 			else:
 				return list(reversed(self.topTop(end, e_rect, start, s_rect)))
 		if side == "left":
-			return self.topTop(start, s_rect, end, e_rect)
+			return self.topLeft(start, s_rect, end, e_rect)
 
 	"""
 	draw connection from upper side of rect1 to upper side of rect2
@@ -147,9 +147,8 @@ class Geometry:
 		if s_rect.topRight().x() < end.x() + 2*self.grid:
 			#end is right from s_rect
 			return lines + self.zLine(p1, p2, "H", start.x() + end.x() - s_rect.topRight().x())
-		
 		#add line of 2 grid length from end
-		p2 = QPointF(min(end.x(),s_rect.topLeft()) - 2*self.grid, end.y())
+		p2 = QPointF(min(end.x(),s_rect.topLeft().x()) - 2*self.grid, end.y())
 		length = 2*self.grid 
 		if e_rect.topRight().y() < start.y():
 			length = length + start.y() - e_rect.topRight().y()

@@ -73,7 +73,14 @@ class RoundedRect(QGraphicsObject):
 	def mouseDoubleClickEvent(self, event):
 		print("E: ", sys._getframe().f_code.co_name, self.parent.getName())	
 		self.parent.edit()
-	
+
+	"""
+	function used for debugging
+	return name of parent(cytreeitem)
+	"""	
+	def getName(self):
+		return self.parent.getName()
+
 	#event is called, when rectangled is moved
 	def itemChange(self, change, value):
 		print("item change XX")
@@ -246,6 +253,7 @@ class Arrow(QGraphicsLineItem):
 		#self.toItem.addInput(self)
 		
 		self.lines = []
+		self.qLines = []
 
 	"""
 	We need to reimplement this function because the arrow is larger 
@@ -254,7 +262,11 @@ class Arrow(QGraphicsLineItem):
 	"""
 	def boundingRect(self):
 		extra = (self.pen.width() + 20)/ 2.0
+		
+    		#rect = QRectF(self.line().p1(), QSizeF(self.line().p2().x() - self.line().p1().x(),
+                #                      self.line().p2().y() - self.line().p1().y()))
 		rect = self.calcRect()
+		#return self.arrowHead.boundingRect()
 		return rect.normalized().adjusted(-extra, -extra, extra, extra)
 
 	"""
@@ -267,7 +279,7 @@ class Arrow(QGraphicsLineItem):
 	def shape(self):
 		#path = super().shape()
 		path = QPainterPath()
-		path.addRect(self.calcRect())
+		#path.addRect(self.calcRect())
 		path.addPolygon(self.arrowHead)
 
 		return path
@@ -276,8 +288,8 @@ class Arrow(QGraphicsLineItem):
 	def update(self):
 		if self.fromItem is None or self.toItem is None:
 			return
-		coordinates = QLineF(self.fromItem.getLinePoint(self.toItem.center()),
-			self.toItem.getLinePoint(self.fromItem.center()))
+		coordinates = QLineF(self.fromItem.getLinePoint(self.toItem.center())[1],
+			self.toItem.getLinePoint(self.fromItem.center())[1])
 		#self.setLine(coordinates)
 
 	def drawLine(self, point, item):
@@ -298,23 +310,6 @@ class Arrow(QGraphicsLineItem):
 		g = Geometry()
 		self.lines = g.rectToPoint(self.startPoint, self.fromItem.getPositionalRect(), point) 
 
-	#called to draw the line temporarly
-	#obsolete	
-	def setPoint(self, point):
-		#clear
-		self.lines = []
-		self.toItem = None
-
-		side, p1 = self.fromItem.getLinePoint(point)
-		if side == "top" or side == "bottom":
-			p2 = QPointF(p1.x(),point.y())
-		else:
-			p2 = QPointF(point.x(), p1.y())
-		
-		self.addOrAppend(0, QLineF(p1,p2))
-		if p2 != point:
-			self.addOrAppend(1, QLineF(p2,point))
-
 	"""
 	saves second rectangle/Item and end point of a connection
 
@@ -331,21 +326,8 @@ class Arrow(QGraphicsLineItem):
 		#save endItem
 		self.toItem = end
 		g = Geometry()
-		self.lines = g.rectToRect(self.startPoint, self.fromItem.getPositionalRect(), self.endPoint, end.getPositionalRect()) 
-
-	#obsolete	
-	def setItem(self, end):
-		rect = end.getPositionalRect()
-		lines = []
-		print("set Item")
-		#calculate intersection
-		for l in self.lines:
-			d = GeoHelper.getIntersection(l, rect)
-			if d is not None:
-				lines.append(QLineF(l.p1(), d))
-				break
-			lines.append(l)
-		self.lines = lines
+		self.lines = g.rectToRect(self.startPoint, self.fromItem.getPositionalRect(), self.endPoint, end.getPositionalRect())
+		print("a:", self.lines) 
 
 	def connect(self, end):
 		self.toItem = end
@@ -370,6 +352,14 @@ class Arrow(QGraphicsLineItem):
 			self.lines[i] = line
 		else:
 			self.lines.append(line)
+
+	def resetLines(self):
+		for l in self.qLines:
+			self.scene().removeItem(l)
+		self.qLines = []
+		for l in self.lines:
+			self.qLines.append(QGraphicsLineItem(l, self))
+		
 
 	def paint (self, painter, option, widget = None):
 		arrowSize = 10
@@ -396,8 +386,10 @@ class Arrow(QGraphicsLineItem):
 		self.arrowHead.append(line.p2())
 		self.arrowHead.append(p1)
 		self.arrowHead.append(p2)
-		for l in self.lines:
-			painter.drawLine(l)
+		self.resetLines()
+		#for l in self.lines:
+		#	QGraphicsLineItem(l, self)
+			#painter.drawLine(l)
 		painter.drawPolygon(self.arrowHead)
 
 		if self.isSelected():
