@@ -5,7 +5,7 @@ import math
 from helper.geometry import Geometry
 from model.cyvariable import CyVariable
 from gui.editvardialog import EditVarDialog
-from PyQt5.QtWidgets import QTreeWidgetItem, QGraphicsObject, QGraphicsItem, QGraphicsLineItem
+from PyQt5.QtWidgets import QTreeWidgetItem, QGraphicsObject, QGraphicsItem, QGraphicsLineItem, QGraphicsItemGroup
 from PyQt5.QtGui import QPainter, QColor, QFont, QPen, QLinearGradient, QPolygonF, QPainterPath 
 from PyQt5.QtCore import Qt, QRectF, QPoint, QPointF, QSizeF, QLineF 
 
@@ -238,7 +238,7 @@ class GeoHelper():
 			return intersectPoint
 		return None
 
-class Arrow(QGraphicsLineItem):
+class Arrow(QGraphicsItemGroup):
 	def __init__(self, start):
 		super().__init__()
 		self.fromItem = start
@@ -285,7 +285,7 @@ class Arrow(QGraphicsLineItem):
 		return path
 	
 	#redraw, due to moving an object	
-	def update(self):
+	def recalcUpdate(self):
 		if self.fromItem is None or self.toItem is None:
 			return
 		coordinates = QLineF(self.fromItem.getLinePoint(self.toItem.center())[1],
@@ -297,8 +297,9 @@ class Arrow(QGraphicsLineItem):
 			self.setItem2(item, point)
 		else:
 			self.setPoint2(point)
+		self.update(self.boundingRect())
 		#trigger paint to update/ redraw
-		self.setLine(self.lines[-1])
+		#self.setLine(self.lines[-1])
 		#super().update(self.boundingRect())
 
 	def setPoint2(self, point):
@@ -340,6 +341,10 @@ class Arrow(QGraphicsLineItem):
 		maxY = self.lines[0].p1().y()
 
 		for l in self.lines:
+			minX = min(minX, l.p1().x())
+			minY = min(minY, l.p1().y())
+			maxX = max(maxX, l.p1().x())
+			maxY = max(maxY, l.p1().y())
 			minX = min(minX, l.p2().x())
 			minY = min(minY, l.p2().y())
 			maxX = max(maxX, l.p2().x())
@@ -353,19 +358,27 @@ class Arrow(QGraphicsLineItem):
 		else:
 			self.lines.append(line)
 
-	def resetLines(self):
+	def resetLines(self, pen):
 		for l in self.qLines:
 			self.scene().removeItem(l)
 		self.qLines = []
 		for l in self.lines:
-			self.qLines.append(QGraphicsLineItem(l, self))
-		
+			line = QGraphicsLineItem(l, self)
+			line.setPen(pen)
+			#line.setFlag(QGraphicsItem.ItemIsSelectable)
+			self.qLines.append(line)
 
 	def paint (self, painter, option, widget = None):
 		arrowSize = 10
-		#pen = self.pen()
-		painter.setPen(self.pen)
-		painter.setBrush(self.color)
+	
+		if self.isSelected():
+			pen = QPen(Qt.red,1)
+			color = Qt.red
+		else:
+			pen = self.pen
+			color = self.color	
+		painter.setPen(pen)
+		painter.setBrush(color)
 		#calculate line
 		#coordinates = QLineF(self.fromItem.getLinePoint(self.toItem.center()),
 		#	self.toItem.getLinePoint(self.fromItem.center()))
@@ -386,19 +399,6 @@ class Arrow(QGraphicsLineItem):
 		self.arrowHead.append(line.p2())
 		self.arrowHead.append(p1)
 		self.arrowHead.append(p2)
-		self.resetLines()
-		#for l in self.lines:
-		#	QGraphicsLineItem(l, self)
-			#painter.drawLine(l)
 		painter.drawPolygon(self.arrowHead)
-
-		if self.isSelected():
-			for line in self.lines:
-				painter.setPen(QPen(self.color,1, Qt.DashLine))
-				l = line
-				l.translate(0, 4.0)
-				painter.drawLine(l)
-				l.translate(0, -8.0)
-				painter.drawLine(l)
-
+		self.resetLines(pen)
 
