@@ -144,9 +144,9 @@ class Geometry:
 		#add line of grid length from start
 		p1 = QPointF(start.x(), start.y() - 2*self.grid)
 		lines.append(QLineF(start, p1))
-		if s_rect.topRight().x() < end.x() + 2*self.grid:
+		if s_rect.topRight().x() + 2*self.grid < end.x():
 			#end is right from s_rect
-			return lines + self.zLine(p1, p2, "H", start.x() + end.x() - s_rect.topRight().x())
+			return lines + self.zLine(p1, end, "H", start.x() + end.x() - s_rect.topRight().x())
 		#add line of 2 grid length from end
 		p2 = QPointF(min(end.x(),s_rect.topLeft().x()) - 2*self.grid, end.y())
 		length = 2*self.grid 
