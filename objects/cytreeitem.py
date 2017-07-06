@@ -68,6 +68,7 @@ class RoundedRect(QGraphicsObject):
 
 		self.setFlag(QGraphicsItem.ItemIsMovable)
 		self.setFlag(QGraphicsItem.ItemIsSelectable)
+		self.setFlag(QGraphicsItem.ItemSendsScenePositionChanges)
 		self.setPos(pos)
 
 	def mouseDoubleClickEvent(self, event):
@@ -86,9 +87,9 @@ class RoundedRect(QGraphicsObject):
 		print("item change XX")
 		#item is moved, update lines(connections)
 		for o in self.outputs:
-			o.update()
+			o.move()
 		for i in self.inputs:
-			i.update()
+			i.move()
 		return super().itemChange(change, value)
 
 	#appends a connection as output
@@ -208,6 +209,29 @@ class GeoHelper():
 		#b = y - ax
 		b = y - a*x
 		return a*x1+b
+
+	"""
+	calculates the distance between two points and moves a third point by the same
+	distance
+	
+	params
+	------
+	pointA: QPointF
+	     first point
+	pointB: QPointF
+	     second point
+	move: QPointF
+	     point that is moved
+
+	return
+	------
+	QPointF
+	"""
+	@staticmethod
+	def movePoint(old, new, move):
+		x = new.x() - old.x()
+		y = new.y() - old.y()
+		return QPointF(move.x()+x, move.y() + y)
 	
 	"""
 	returns the direction of a vertical or horizontal line
@@ -249,11 +273,12 @@ class Arrow(QGraphicsItemGroup):
 		self.color = Qt.black
 		self.pen = QPen(self.color, 1, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin)
 		self.arrowHead = QPolygonF()
-		self.fromItem.addOutput(self)
-		#self.toItem.addInput(self)
 		
 		self.lines = []
 		self.qLines = []
+		
+		#experimental
+		self.setFlag(QGraphicsItem.ItemIsMovable)
 
 	"""
 	We need to reimplement this function because the arrow is larger 
@@ -292,6 +317,20 @@ class Arrow(QGraphicsItemGroup):
 			self.toItem.getLinePoint(self.fromItem.center())[1])
 		#self.setLine(coordinates)
 
+	"""
+	is called, when one of the items is moved.
+	it recalculates the lines
+	"""
+	def move(self):
+		self.startPoint = GeoHelper.movePoint(self.posFromItem, self.fromItem.getPositionalRect().topLeft(), self.startPoint)
+		self.endPoint = GeoHelper.movePoint(self.posToItem, self.toItem.getPositionalRect().topLeft(), self.endPoint)
+		g = Geometry()
+		self.lines = g.rectToRect(self.startPoint, self.fromItem.getPositionalRect(), self.endPoint, self.toItem.getPositionalRect())
+		self.posToItem = self.toItem.getPositionalRect().topLeft()
+		self.posFromItem = self.fromItem.getPositionalRect().topLeft()
+		
+		self.update(self.boundingRect())
+
 	def drawLine(self, point, item):
 		if item is not None:
 			self.setItem2(item, point)
@@ -305,9 +344,6 @@ class Arrow(QGraphicsItemGroup):
 	def setPoint2(self, point):
 		if self.startPoint is None:
 			s1, self.startPoint = self.fromItem.getNearestPoint(point)
-			print("--------------------")
-			print(s1)
-			print("--------------------")
 		g = Geometry()
 		self.lines = g.rectToPoint(self.startPoint, self.fromItem.getPositionalRect(), point) 
 
@@ -326,6 +362,9 @@ class Arrow(QGraphicsItemGroup):
 		s2, self.endPoint = end.getNearestPoint(pos)
 		#save endItem
 		self.toItem = end
+		#save position (for moving)
+		self.posToItem = self.toItem.getPositionalRect().topLeft()
+		self.posFromItem = self.fromItem.getPositionalRect().topLeft()
 		g = Geometry()
 		self.lines = g.rectToRect(self.startPoint, self.fromItem.getPositionalRect(), self.endPoint, end.getPositionalRect())
 		print("a:", self.lines) 
@@ -333,6 +372,7 @@ class Arrow(QGraphicsItemGroup):
 	def connect(self, end):
 		self.toItem = end
 		self.toItem.addInput(self)
+		self.fromItem.addOutput(self)
 
 	def calcRect(self):
 		minX = self.lines[0].p1().x()
@@ -363,7 +403,8 @@ class Arrow(QGraphicsItemGroup):
 			self.scene().removeItem(l)
 		self.qLines = []
 		for l in self.lines:
-			line = QGraphicsLineItem(l, self)
+			#line = QGraphicsLineItem(l, self)
+			line = LineItem(l, self)
 			line.setPen(pen)
 			#line.setFlag(QGraphicsItem.ItemIsSelectable)
 			self.qLines.append(line)
@@ -402,3 +443,16 @@ class Arrow(QGraphicsItemGroup):
 		painter.drawPolygon(self.arrowHead)
 		self.resetLines(pen)
 
+#experimental for resizing/moving lines
+class LineItem(QGraphicsLineItem):
+	def __init__(self, line=None, parent=None):
+		super().__init__(line, parent)
+
+		self.setFlag(QGraphicsItem.ItemIsMovable)
+		self.setFlag(QGraphicsItem.ItemIsSelectable)
+		self.setFlag(QGraphicsItem.ItemSendsScenePositionChanges)
+	
+	#event is called, when rectangled is moved
+	def itemChange(self, change, value):
+		print("item change LINE")
+		return super().itemChange(change, value)
