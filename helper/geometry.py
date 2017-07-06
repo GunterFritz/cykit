@@ -87,7 +87,8 @@ class Geometry:
 			if s_rect.topLeft().y() < e_rect.topLeft().y():
 				return self.topTop(start, s_rect, end, e_rect)
 			else:
-				return list(reversed(self.topTop(end, e_rect, start, s_rect)))
+				return self.reverseLines(self.topTop(end, e_rect, start, s_rect))
+				#return list(reversed(self.topTop(end, e_rect, start, s_rect)))
 		if side == "left":
 			return self.topLeft(start, s_rect, end, e_rect)
 
@@ -298,3 +299,21 @@ class Geometry:
 		topLeft = QPointF(min(p1.x(), p2.x()), min(p1.y(), p2.y()))
 		bottomRight = QPointF(max(p1.x(), p2.x()), max(p1.y(), p2.y()))
 		return QRectF(topLeft, bottomRight)
+
+	"""
+	reverses a list of line(reverse doesn't work correctly, because points
+	of lines are not reversed
+
+	params
+	------
+	lines:	QLineF []
+	
+	return
+	------
+		reversed QLineF []
+	"""
+	def reverseLines(self, lines):
+		retval = []
+		for l in reversed(lines):
+			retval.append(QLineF(l.p2(), l.p1()))
+		return retval
