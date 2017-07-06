@@ -98,8 +98,10 @@ class MyScene(QGraphicsScene):
 		print("scene mouse move event", event.pos())
 		if self.connect and self.fromItem is not None:
 			self.drawLine(event)
+			print("self.connect", self.fromItem)
 			#self.calculateLine(event)
 		else:
+			print("super")
 			super().mouseMoveEvent(event)
 	
 	def mouseReleaseEvent(self, event):
