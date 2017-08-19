@@ -9,6 +9,7 @@ class Person:
 		self.priorityList = []
 		self.topic_A = None
 		self.topic_B = None
+		self.strut = None
 
 	def random(self, num):
 		for i in range(1, num + 1):
@@ -28,6 +29,14 @@ class Person:
 			self.rang_B = self.getRank(topic.index)
 		else:
 			print("ERROR")
+
+	def print_static(self):
+		print(self.name)
+		print(" ", self.topic_A.name, self.rang_A)
+		print(" ", self.topic_B.name, self.rang_B)
+
+	def satisfaction(self):
+		return self.rang_A + self.rang_B
 
 	def getRank(self, index):
 		for i in range(len(self.priorityList)):
@@ -53,12 +62,54 @@ class Topic:
 		for p in self.persons:
 			print("    ", p.name, ",", p.getRank(self.index))
 
+class Structure:
+	def __init__(self):
+		self.structure = []
+		#Oktaeder
+		#self.colors = [("white", 1), ("green", 2), ("blue", 3), ("yellow", 4), ("red", 5), ("black", 6)]
+		self.colors = {"white" : 1, "green": 2, "blue": 3, "yellow": 4, "red": 5, "black": 6}
+		self.colors = {1 : "white", 2: "green", 3:"blue", 4:"yellow", 5:"red", 6:"black"}
+		self.connections = [(1,2),(1,3),(1,4),(1,5),(2,3),(3,4),(4,5),(5,2),(6,2),(6,3),(6,4),(6,5)]
+		self.translate()
+
+	def translate(self):
+		self.struts = []
+		for s in self.connections:
+			self.struts.append((self.colors[s[0]],self.colors[s[1]]))
+			
+	#def color(self):
+
+	def print_empty(self):
+		for k,v in self.colors.items():
+			print("Edge: -", v)
+			for s in self.strut_search(v):
+				print("  -", s)
+
+	def strut_search(self, color):
+		retval = []
+		for s in self.struts:
+			if s[0] == color or s[1] == color:
+				retval.append(s)
+
+		return retval
+
+	def match(self):
+		if len(self.structure) != len(self.colors):
+			print("configuration error")
+			return None
+
+		#for t in self.structure:
+		#	t
+			
+		
+
 class CyKaAlg:
 	def __init__(self, themen=6, persons=12):
 		self.numTopics = themen
 		self.numPersons = persons
 		self.connections = 4
 		self.persons = []
+		self.persons_stat = []
 		self.topics = []
 		self.structure = []
 	
@@ -76,11 +127,22 @@ class CyKaAlg:
 			p = Person(name)
 			p.random(6)
 			self.persons.append(p)
+			self.persons_stat.append(p)
 		
 		for i in range(1, self.numTopics + 1):
 			name = "T_" + str(i).zfill(2)
 			p = Topic(name, i)
 			self.topics.append(p)
+
+	def print_static(self):
+		sat = 0
+		i = 0
+		for p in self.persons_stat:
+			p.print_static()
+			sat = sat + p.satisfaction()
+			i = i + 1
+
+		print("Satisfaction:", sat/i)
 
 	def calculate(self):
 		#step on getLeast popular topic and assign Persons to it
@@ -119,7 +181,8 @@ class CyKaAlg:
 			self.persons.remove(p)
 			tmp.append(t)
 			ring.remove(t)
-		
+	
+		#todo -> more people	
 		ring[0].assignPerson(self.persons[0])		
 		ring[0].assignPerson(self.persons[1])
 
@@ -279,3 +342,6 @@ if __name__ == '__main__':
 	c.print()
 	#c.print_stat()
 	c.calculate()
+	c.print_static()
+	#s = Structure()
+	#s.print_empty()
