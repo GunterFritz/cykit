@@ -22,14 +22,14 @@ class Person:
 	def assignToTopic(self, topic):
 		if self.topic_A == None:
 			self.topic_A = topic
-			self.rang_A = self.getRang(topic.index)
+			self.rang_A = self.getRank(topic.index)
 		elif self.topic_B == None:
 			self.topic_B = topic
-			self.rang_B = self.getRang(topic.index)
+			self.rang_B = self.getRank(topic.index)
 		else:
 			print("ERROR")
 
-	def getRang(self, index):
+	def getRank(self, index):
 		for i in range(len(self.priorityList)):
 			if self.priorityList[i] == index:
 				return i + 1
@@ -51,7 +51,7 @@ class Topic:
 		print("  Name:", self.name)
 		print("  Members:")
 		for p in self.persons:
-			print("    ", p.name)
+			print("    ", p.name, ",", p.getRank(self.index))
 
 class CyKaAlg:
 	def __init__(self, themen=6, persons=12):
@@ -63,8 +63,10 @@ class CyKaAlg:
 		self.structure = []
 	
 	def printStructure(self):
+		print("-----------------------------------------------------")
 		for t in self.structure:
 			t.print()	
+		print("-----------------------------------------------------")
 
 
 	#init the person table with random priority list
@@ -83,56 +85,117 @@ class CyKaAlg:
 	def calculate(self):
 		#step on getLeast popular topic and assign Persons to it
 		lp = self.getLeastPopular()
+		self.topics.remove(lp)
 		self.structure.append(lp)
 		self.assignPersons(lp)
 		
-		self.assignRing(lp)
+		ring = self.assignRing(lp)
+		self.removeTopics(ring)
+		#assign a ring to remaining topic
+		#opposite of lp
+		self.assignPersons(self.topics[0])
+		ring = self.assignRing(self.topics[0], ring)
+		self.structure.append(self.topics[0])
+		self.topics.remove(self.topics[0])
+
+		self.closeRing(ring)
+
 		self.printStructure()
 
+	def closeRing(self, ring):
+		for x in ring:
+			print(x.name)
+		for x in self.persons:
+			print(x.name)
+		t = self.getLeastPopular(self.persons, ring)
+		pers = self.assignPersons(t, self.persons, 2)
+		ring.remove(t)
+
+		tmp = []
+
+		for p in pers:
+			t = self.assignMostBeautyful(p, ring)
+			t.assignPerson(p)
+			self.persons.remove(p)
+			tmp.append(t)
+			ring.remove(t)
+		
+		ring[0].assignPerson(self.persons[0])		
+		ring[0].assignPerson(self.persons[1])
+
+		m = max(self.persons[0].getRank(tmp[0].index),
+			self.persons[0].getRank(tmp[1].index),
+			self.persons[1].getRank(tmp[0].index),
+			self.persons[1].getRank(tmp[1].index))
+
+		#todo case of eaqul -> check min value
+		if (self.persons[0].getRank(tmp[0].index) < m and
+			self.persons[1].getRank(tmp[1].index) < m):
+			tmp[0].assignPerson(self.persons[0])		
+			tmp[1].assignPerson(self.persons[1])
+		else:	
+			tmp[0].assignPerson(self.persons[1])		
+			tmp[1].assignPerson(self.persons[0])
+
+		self.persons.remove(self.persons[1])
+		self.persons.remove(self.persons[0])
+		
 
 	#assign n persons wich like topic most
-	def assignPersons(self, topic, persons = None):
+	def assignPersons(self, topic, persons = None, num = None):
 		#initialize
 		if persons == None:
 			persons = self.persons
+		if num == None:
+			num = self.connections
 
 		#take people who likes the topic
+		ass_pers = []
 		count = 0
 		for i in range(self.numTopics):
 			for p in persons:
 				if p.priorityList[i] == topic.index:
 					topic.assignPerson(p)
-					persons.remove(p)
+					ass_pers.append(p)
 					count = count + 1
-				if count == self.connections:
-					break
-			if count == self.connections:
-				break
-
-	def hello(self):
-		print("halle")
+				if count == num:
+					return ass_pers
 
 	#assign a ring around a top (persons already included)
-	def assignRing(self, topic):
+	def assignRing(self, topic, ring = None):
+		if ring is None:
+			ring = self.topics
 		persons = topic.persons
-		persons.sort(key=operator.methodcaller("getRang", topic.index), reverse=True)
-		#persons.sort(key=getRang(topic.index))
+		persons.sort(key=operator.methodcaller("getRank", topic.index), reverse=True)
+		#persons.sort(key=getRank(topic.index))
 
+		ring_topics = []
 		for p in persons:
-			self.hello()
-			self.assignMostBeautyful(p)
+			t = self.assignMostBeautyful(p, ring)
+			ring.remove(t)
+			t.assignPerson(p)
+			self.persons.remove(p)
+			ring_topics.append(t)
+
+		return ring_topics
+		#t = self.getLeastPopular(self.persons, ring_topics)
+		#print("------------------------------------")
+		#t.print()
+
+	#helper, to secure switch from stack to structure
+	def removeTopics(self, ring):
+		for t in ring:
+			#self.topics.remove(t)
+			self.structure.append(t)		
 
 	
 	#assign topic which a person mostly like, from available topis		
-	def assignMostBeautyful(self, person):
+	def assignMostBeautyful(self, person, topics):
 		#iterate through topic list
 		for prio in person.priorityList:
-			for t in self.topics:
+			for t in topics:
 				if t.index == prio:
-					self.topics.remove(t)
-					self.structure.append(t)
-					t.assignPerson(person)
-					return None
+					return t
 		print("ERROR")
 		return None
 
@@ -172,7 +235,6 @@ class CyKaAlg:
 		for t in topics:
 			if t.index == least_pop:
 				retval = t
-				topics.remove(t)
 				return t
 
 		return None
@@ -217,7 +279,3 @@ if __name__ == '__main__':
 	c.print()
 	#c.print_stat()
 	c.calculate()
-
-	test = np.array([4,9,9,7,8,2,2])
-	print("test:", test)
-	print(np.argmin(test))
