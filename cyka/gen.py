@@ -27,7 +27,7 @@ class Person:
 			for t in topics:
 				if t.index == prio:
 					return t
-		print("ERROR 1")
+		print("ERROR 1", self.name)
 		return None
 
 	def out(self):
@@ -42,6 +42,17 @@ class Person:
 			self.rang_B = self.getRank(topic.index)
 		else:
 			print("ERROR 2", self.name)
+			out
+
+	def removeAssignment(self, topic):
+		if self.topic_A == topic:
+			self.topic_A = None
+			self.rang_A = 0
+		elif self.topic_B == topic:
+			self.topic_B = None
+			self.rang_B = 0 
+		else:
+			print("ERROR 3", self.name)
 			out
 
 	def print_static(self):
@@ -62,6 +73,21 @@ class Person:
 		
 		tmp = self.getRank(p2.topic_A.index) + self.getRank(p2.topic_B.index)
 		tmp = tmp + p2.getRank(self.topic_A.index) + p2.getRank(self.topic_B.index)
+
+		if tmp < current:
+			print("--SWITCH__")
+			tmp_a = p2.topic_A
+			tmp_b = p2.topic_B
+			tmp_a.removeAssignment(p2)
+			tmp_b.removeAssignment(p2)
+			self.topic_A.assignPerson(p2)
+			self.topic_B.assignPerson(p2)
+			self.topic_A.removeAssignment(self)
+			self.topic_B.removeAssignment(self)
+			tmp_a.assignPerson(self)
+			tmp_b.assignPerson(self)
+			
+
 
 	@staticmethod
 	def getMostSatisfied(persons, topic1, topic2):
@@ -84,19 +110,24 @@ class Topic:
 	def assignPerson(self, p):
 		self.persons.append(p)
 		p.assignToTopic(self)
+
+	def removeAssignment(self, p):
+		self.persons.remove(p)
+		p.removeAssignment(self)
 	
 	def assignPersons(self, pl):
 		for p in pl:
 			self.assignPerson(p)
 
-	#returns n persons who like topic most	
+	#returns n persons who like topic most
+	#list is reverse sorted (person who dislike most is at first position)
 	def nPersonsLikeTopic(self, persons, num):
 		retval = []
 		count = 0
 		for i in range(len(persons[0].priorityList)):
 			for p in persons:
 				if self.index == p.priorityList[i]:
-					retval.append(p)
+					retval.insert(0, p)
 					count = count + 1
 				if count == num:
 					return retval
@@ -199,6 +230,7 @@ class Ring:
 
 		#select least popular topic as center
 		self.head = Topic.getLeastPopular(_topics, _persons)
+		self.head.color ="white"
 		_topics.remove(self.head)
 		#TODO if num_missing > 1 increment num_ring_topics
 		#select persons who likes center topic most
@@ -209,13 +241,15 @@ class Ring:
 			#select topics to already choosed people
 			self.ring.append(t)
 			_topics.remove(t)
-			print("r1 assign:", p.name)
 			t.assignPerson(p)
 			_persons.remove(p)
 
-		for p, t1, t2 in self.selectRingPersons(self.ring, _persons):
+		self.closeRing(_persons)
+
+	def closeRing(self, persons):
+		_persons = persons[:]
+		for p, t1, t2 in self.selectRingPersons(self.ring, persons):
 			#select people to already selectd ting topics
-			print("r2 assign:", p.name)
 			t1.assignPerson(p)
 			t2.assignPerson(p)
 			self.pers.append(p)
@@ -230,9 +264,21 @@ class Ring:
 		#start with least popular topic
 		lp = Topic.getLeastPopular(_topics, _persons)
 		_topics.remove(lp)
-
-		tmp = lp
-
+		
+		#optimization, add two person two least pop
+		pers = lp.nPersonsLikeTopic(_persons, 2)
+		#process first person
+		end = pers[0].getMostBeautyfulTopic(_topics)
+		retval.append((pers[0],lp,end))
+		_topics.remove(end)
+		_persons.remove(pers[0])
+		#process second person
+		tmp = pers[1].getMostBeautyfulTopic(_topics)
+		retval.append((pers[1],lp,tmp))
+		_topics.remove(tmp)
+		_persons.remove(pers[1])
+			
+		#process further ring
 		while len(_topics) > 0:
 			#select persons for topic
 			p = tmp.nPersonsLikeTopic(_persons, 1)[0]
@@ -243,8 +289,8 @@ class Ring:
 			_topics.remove(tmp)
 
 		#close last connection
-		p = Person.getMostSatisfied(_persons, lp, tmp)
-		retval.append((p,tmp,lp))
+		p = Person.getMostSatisfied(_persons, end, tmp)
+		retval.append((p,tmp,end))
 
 		return retval
 
@@ -276,17 +322,14 @@ class Star:
 	def build(self, center, topics, persons):
 		_persons = persons[:]
 		self.head = center
+		self.head.color ="black"
 		self.sat = topics
 		for t in topics:
 			p = Person.getMostSatisfied(_persons, center, t)
-			print("s1 assign:", p.name)
 			t.assignPerson(p)
-			print("s2 assign:", p.name)
 			center.assignPerson(p)
 			self.pers.append(p)
-			print("s1 remove:", p.name)
 			_persons.remove(p)
-			
 		
 
 class Ikosaeder:
@@ -302,6 +345,16 @@ class Oktaeder:
 		self.persons = None
 
 	def build(self, topics, persons):
+		#current architecture: 
+		# 1 create a star with ring
+		# 2 create a star and connect to ring
+
+		#TODO second variant:
+		# 1 create two stars and connect it
+		# 2 close the ring
+		
+		#Build both and select better
+
 		self.topics = deepcopy(topics)
 		self.persons = deepcopy(persons)
 
@@ -311,17 +364,60 @@ class Oktaeder:
 
 		#remove objects, that next step uses only remainig
 		self.topics.remove(ring.head)
-		for t in ring.ring:
-			self.topics.remove(t)
-		for p in ring.pers:
-			print("Remove:", p.name)
-			self.persons.remove(p)
+		self.clear(ring.ring, ring.pers)
 
 		star = Star()
 		star.build(self.topics[0], ring.ring, self.persons)
 
 		self.ring = ring
 		self.star = star
+
+		self.optimize()
+
+	def clear(self, topics, pers):
+		if topics is not None:
+			for t in topics:
+				self.topics.remove(t)
+		if pers is not None:
+			for p in pers:
+				self.persons.remove(p)
+
+	def getSatisfaction(self):
+		self.persons = self.ring.pers + self.star.pers
+		sat = 0
+		i = 0
+		for p in self.persons:
+			sat = sat + p.satisfaction()
+			i = i + 1
+
+		self.satisfaction = sat/i
+		return self.satisfaction
+
+	def optimizeRing(self):
+		#self.persons = self.ring.pers + self.star.pers
+		self.persons = self.star.pers
+		self.persons.sort(key=operator.methodcaller("satisfaction"), reverse=True)
+
+		print("Optimize")
+		print(" Satisfaction 1:", self.getSatisfaction())
+
+		for p1 in self.persons:
+			for p2 in self.persons:
+				if p1 == p2:
+					continue
+				p1.switchIfBetter(p2)
+
+	def optimize(self, pers = None):
+		if pers is None:
+			pers = self.ring.pers + self.star.pers
+		
+		pers.sort(key=operator.methodcaller("satisfaction"), reverse=True)
+
+		for p1 in pers:
+			for p2 in self.persons:
+				if p1 == p2:
+					continue
+				p1.switchIfBetter(p2)
 
 	def printStructure(self):
 		print("-Oktaeder--------------------------------------------")
@@ -334,16 +430,20 @@ class Oktaeder:
 	def printSatisfaction(self):	
 		sat = 0
 		i = 0
+		print("Ring:")
 		for p in self.ring.pers:
 			p.print_static()
 			sat = sat + p.satisfaction()
 			i = i + 1
+		print("-------------------------------")
+		print("Star:")
 		for p in self.star.pers:
 			p.print_static()
 			sat = sat + p.satisfaction()
 			i = i + 1
 
-		print("Satisfaction:", sat/i)
+		self.satisfaction = sat/i
+		print("Satisfaction:", self.satisfaction)
 
 
 
@@ -381,18 +481,26 @@ class CyKaAlg:
 	def print_static(self):
 		sat = 0
 		i = 0
+		print("-------------------------------")
+		print("-------------------------------")
 		for p in self.persons_stat:
 			p.print_static()
 			sat = sat + p.satisfaction()
 			i = i + 1
 
-		print("Satisfaction:", sat/i)
+		print("-------------------------------")
+		print("-------------------------------")
+		self.oktaeder.printSatisfaction()
+		print("Satisfaction old        :", sat/i)
+		print("Satisfaction Oktaeder:", self.oktaeder.satisfaction)
 
 	def calculate(self):
 		o = Oktaeder()
 		o.build(self.topics, self.persons)
+		o.optimize()
 		o.printStructure()
 		o.printSatisfaction()
+		self.oktaeder = o
 		#step on getLeast popular topic and assign Persons to it
 		lp = Topic.getLeastPopular(self.topics, self.persons)
 		self.topics.remove(lp)
