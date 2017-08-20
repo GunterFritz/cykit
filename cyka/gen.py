@@ -1,3 +1,4 @@
+from copy import deepcopy
 from random import shuffle
 import sys
 import operator
@@ -10,12 +11,24 @@ class Person:
 		self.topic_A = None
 		self.topic_B = None
 		self.strut = None
+		self.rang_A = 0
+		self.rang_B = 0
 
 	def random(self, num):
 		for i in range(1, num + 1):
 			self.priorityList.append(i)
 
 		shuffle(self.priorityList)
+	
+	#returns the most beautiful topic from a list of topics
+	def getMostBeautyfulTopic(self, topics):
+		#iterate through topic list
+		for prio in self.priorityList:
+			for t in topics:
+				if t.index == prio:
+					return t
+		print("ERROR 1")
+		return None
 
 	def out(self):
 		print(self.name, self.priorityList)
@@ -28,7 +41,8 @@ class Person:
 			self.topic_B = topic
 			self.rang_B = self.getRank(topic.index)
 		else:
-			print("ERROR")
+			print("ERROR 2", self.name)
+			out
 
 	def print_static(self):
 		print(self.name)
@@ -43,6 +57,23 @@ class Person:
 			if self.priorityList[i] == index:
 				return i + 1
 
+	def switchIfBetter(self, p2):
+		current = self.satisfaction() + p2.satisfaction()
+		
+		tmp = self.getRank(p2.topic_A.index) + self.getRank(p2.topic_B.index)
+		tmp = tmp + p2.getRank(self.topic_A.index) + p2.getRank(self.topic_B.index)
+
+	@staticmethod
+	def getMostSatisfied(persons, topic1, topic2):
+		rank = 1000
+		pers = None
+		for p in persons:
+			r = p.getRank(topic1.index) + p.getRank(topic2.index)
+			if r < rank:
+				pers = p
+				rank = r
+		return pers
+
 class Topic:
 	def __init__(self, name, index):
 		self.name = name
@@ -53,6 +84,23 @@ class Topic:
 	def assignPerson(self, p):
 		self.persons.append(p)
 		p.assignToTopic(self)
+	
+	def assignPersons(self, pl):
+		for p in pl:
+			self.assignPerson(p)
+
+	#returns n persons who like topic most	
+	def nPersonsLikeTopic(self, persons, num):
+		retval = []
+		count = 0
+		for i in range(len(persons[0].priorityList)):
+			for p in persons:
+				if self.index == p.priorityList[i]:
+					retval.append(p)
+					count = count + 1
+				if count == num:
+					return retval
+
 
 	def print(self):
 		print("------------------")
@@ -61,6 +109,43 @@ class Topic:
 		print("  Members:")
 		for p in self.persons:
 			print("    ", p.name, ",", p.getRank(self.index))
+
+	#calculates least popular topic	
+	@staticmethod
+	def getLeastPopular(topics, persons):
+		#sizeof array y= remaining topics, x = num of topics plus column for topic index
+		numTopics = len(persons[0].priorityList)
+		count = np.zeros((len(topics), numTopics+1), int)
+		row = -1
+		for t in topics:
+			#write index into first column
+			row = row + 1
+			count[row][0] = t.index
+			for p in persons:
+				#iterate through the prioritylist of each person
+				#and increment the topic at position of priority 
+				for pindex in range(len(p.priorityList)):
+					if p.priorityList[pindex] == t.index:
+						count[row][pindex+1] = count[row][pindex+1] + 1
+						break
+		il = count[:,0]
+		accu = np.cumsum(count[:,1:],1)
+
+		#calculate popularity
+		pop = np.cumsum(accu,1)[:,numTopics-1]
+		least_pop = il[np.argmin(pop)]
+
+		pop = np.vstack([il,pop]).transpose()
+		print(pop)
+		print("Least Popular Topic:", least_pop)
+		
+		for t in topics:
+			if t.index == least_pop:
+				retval = t
+				return t
+
+		return None
+
 
 class Structure:
 	def __init__(self):
@@ -101,7 +186,166 @@ class Structure:
 		#for t in self.structure:
 		#	t
 			
+class Ring:
+	def __init__(self):
+		self.head = None
+		self.pers = []
+		self.ring = []
+
+	def build(self, topics, persons, num_ring_topics, num_missing = 0):
+		#do not change original
+		_topics = topics[:]
+		_persons = persons[:]
+
+		#select least popular topic as center
+		self.head = Topic.getLeastPopular(_topics, _persons)
+		_topics.remove(self.head)
+		#TODO if num_missing > 1 increment num_ring_topics
+		#select persons who likes center topic most
+		self.pers = self.head.nPersonsLikeTopic(_persons, num_ring_topics)
+		self.head.assignPersons(self.pers)
+
+		for p, t in self.selectStarTopics(_topics, self.pers, self.head):
+			#select topics to already choosed people
+			self.ring.append(t)
+			_topics.remove(t)
+			print("r1 assign:", p.name)
+			t.assignPerson(p)
+			_persons.remove(p)
+
+		for p, t1, t2 in self.selectRingPersons(self.ring, _persons):
+			#select people to already selectd ting topics
+			print("r2 assign:", p.name)
+			t1.assignPerson(p)
+			t2.assignPerson(p)
+			self.pers.append(p)
+			_persons.remove(p)
+			
+
+	#sorts a list of topics into a ring(4 or 5 topics) and build the struts
+	def selectRingPersons(self, topics, persons, joker = False):
+		_topics = topics[:]
+		_persons = persons[:]
+		retval = []
+		#start with least popular topic
+		lp = Topic.getLeastPopular(_topics, _persons)
+		_topics.remove(lp)
+
+		tmp = lp
+
+		while len(_topics) > 0:
+			#select persons for topic
+			p = tmp.nPersonsLikeTopic(_persons, 1)[0]
+			_persons.remove(p)
+			tmp_next = p.getMostBeautyfulTopic(_topics)
+			retval.append((p,tmp,tmp_next))
+			tmp = tmp_next
+			_topics.remove(tmp)
+
+		#close last connection
+		p = Person.getMostSatisfied(_persons, lp, tmp)
+		retval.append((p,tmp,lp))
+
+		return retval
+
+
+	#assign a star around a topic (persons already included)
+	def selectStarTopics(self, topics, persons, center = None):
+		topics = topics[:]
+
+		#sort by center
+		if center is not None:
+			persons.sort(key=operator.methodcaller("getRank", center.index), reverse=True)
+
+		assignment = []
+		for p in persons:
+			t = p.getMostBeautyfulTopic(topics)
+			#topic no longer selectable
+			topics.remove(t)
+			assignment.append((p,t))
+
+		return assignment
+
+class Star:
+	def __init__(self):
+		num = None
+		self.head = None
+		self.sat = None
+		self.pers = []
+
+	def build(self, center, topics, persons):
+		_persons = persons[:]
+		self.head = center
+		self.sat = topics
+		for t in topics:
+			p = Person.getMostSatisfied(_persons, center, t)
+			print("s1 assign:", p.name)
+			t.assignPerson(p)
+			print("s2 assign:", p.name)
+			center.assignPerson(p)
+			self.pers.append(p)
+			print("s1 remove:", p.name)
+			_persons.remove(p)
+			
 		
+
+class Ikosaeder:
+	def __init__(self, persons = 30):				
+		self.numTopics = 12
+		self.numPersons = persons
+
+class Oktaeder:
+	def __init__(self, persons = 12):
+		self.numTopics = 6
+		self.numPersons = persons
+		self.topics = None
+		self.persons = None
+
+	def build(self, topics, persons):
+		self.topics = deepcopy(topics)
+		self.persons = deepcopy(persons)
+
+		#build ring
+		ring = Ring()
+		ring.build(self.topics, self.persons, 4)
+
+		#remove objects, that next step uses only remainig
+		self.topics.remove(ring.head)
+		for t in ring.ring:
+			self.topics.remove(t)
+		for p in ring.pers:
+			print("Remove:", p.name)
+			self.persons.remove(p)
+
+		star = Star()
+		star.build(self.topics[0], ring.ring, self.persons)
+
+		self.ring = ring
+		self.star = star
+
+	def printStructure(self):
+		print("-Oktaeder--------------------------------------------")
+		self.ring.head.print()	
+		for t in self.ring.ring:
+			t.print()
+		self.star.head.print()	
+		print("-----------------------------------------------------")
+		
+	def printSatisfaction(self):	
+		sat = 0
+		i = 0
+		for p in self.ring.pers:
+			p.print_static()
+			sat = sat + p.satisfaction()
+			i = i + 1
+		for p in self.star.pers:
+			p.print_static()
+			sat = sat + p.satisfaction()
+			i = i + 1
+
+		print("Satisfaction:", sat/i)
+
+
 
 class CyKaAlg:
 	def __init__(self, themen=6, persons=12):
@@ -145,18 +389,30 @@ class CyKaAlg:
 		print("Satisfaction:", sat/i)
 
 	def calculate(self):
+		o = Oktaeder()
+		o.build(self.topics, self.persons)
+		o.printStructure()
+		o.printSatisfaction()
 		#step on getLeast popular topic and assign Persons to it
-		lp = self.getLeastPopular()
+		lp = Topic.getLeastPopular(self.topics, self.persons)
 		self.topics.remove(lp)
 		self.structure.append(lp)
-		self.assignPersons(lp)
+		p = lp.nPersonsLikeTopic(self.persons, self.connections)
+		lp.assignPersons(p)
 		
-		ring = self.assignRing(lp)
+		ring = self.assignRing(lp, self.topics)
 		self.removeTopics(ring)
 		#assign a ring to remaining topic
 		#opposite of lp
-		self.assignPersons(self.topics[0])
+		p = self.topics[0].nPersonsLikeTopic(self.persons, self.connections)
+		self.topics[0].assignPersons(p)
+		print("1-----------------------")
+		for x in ring:
+			print("T:", x.name)
 		ring = self.assignRing(self.topics[0], ring)
+		print("2-----------------------")
+		for x in ring:
+			print("T:", x.name)
 		self.structure.append(self.topics[0])
 		self.topics.remove(self.topics[0])
 
@@ -166,17 +422,18 @@ class CyKaAlg:
 
 	def closeRing(self, ring):
 		for x in ring:
-			print(x.name)
+			print("T:", x.name)
 		for x in self.persons:
-			print(x.name)
-		t = self.getLeastPopular(self.persons, ring)
-		pers = self.assignPersons(t, self.persons, 2)
+			print("P:", x.name)
+		t = Topic.getLeastPopular(ring, self.persons)
+		pers = t.nPersonsLikeTopic(self.persons, 2)
+		t.assignPersons(pers)
 		ring.remove(t)
 
 		tmp = []
 
 		for p in pers:
-			t = self.assignMostBeautyful(p, ring)
+			t = p.getMostBeautyfulTopic(ring)
 			t.assignPerson(p)
 			self.persons.remove(p)
 			tmp.append(t)
@@ -204,37 +461,16 @@ class CyKaAlg:
 		self.persons.remove(self.persons[0])
 		
 
-	#assign n persons wich like topic most
-	def assignPersons(self, topic, persons = None, num = None):
-		#initialize
-		if persons == None:
-			persons = self.persons
-		if num == None:
-			num = self.connections
-
-		#take people who likes the topic
-		ass_pers = []
-		count = 0
-		for i in range(self.numTopics):
-			for p in persons:
-				if p.priorityList[i] == topic.index:
-					topic.assignPerson(p)
-					ass_pers.append(p)
-					count = count + 1
-				if count == num:
-					return ass_pers
-
 	#assign a ring around a top (persons already included)
-	def assignRing(self, topic, ring = None):
-		if ring is None:
-			ring = self.topics
+	def assignRing(self, topic, ring):
+		ring = ring[:]
 		persons = topic.persons
 		persons.sort(key=operator.methodcaller("getRank", topic.index), reverse=True)
 		#persons.sort(key=getRank(topic.index))
 
 		ring_topics = []
 		for p in persons:
-			t = self.assignMostBeautyful(p, ring)
+			t = p.getMostBeautyfulTopic(ring)
 			ring.remove(t)
 			t.assignPerson(p)
 			self.persons.remove(p)
@@ -248,59 +484,8 @@ class CyKaAlg:
 	#helper, to secure switch from stack to structure
 	def removeTopics(self, ring):
 		for t in ring:
-			#self.topics.remove(t)
+			self.topics.remove(t)
 			self.structure.append(t)		
-
-	
-	#assign topic which a person mostly like, from available topis		
-	def assignMostBeautyful(self, person, topics):
-		#iterate through topic list
-		for prio in person.priorityList:
-			for t in topics:
-				if t.index == prio:
-					return t
-		print("ERROR")
-		return None
-
-	#calculates least popular topic
-	def getLeastPopular(self, persons = None, topics=None):
-		#initialize
-		if persons == None:
-			persons = self.persons
-		if topics == None:
-			topics=self.topics
-
-		#sizeof array y= remaining topics, x = num of topics plus column for topic index
-		count = np.zeros((len(topics), self.numTopics+1), int)
-		row = -1
-		for t in topics:
-			#write index into first column
-			row = row + 1
-			count[row][0] = t.index
-			for p in persons:
-				#iterate through the prioritylist of each person
-				#and increment the topic at position of priority 
-				for pindex in range(len(p.priorityList)):
-					if p.priorityList[pindex] == t.index:
-						count[row][pindex+1] = count[row][pindex+1] + 1
-						break
-		il = count[:,0]
-		accu = np.cumsum(count[:,1:],1)
-
-		#calculate popularity
-		pop = np.cumsum(accu,1)[:,self.numTopics-1]
-		least_pop = il[np.argmin(pop)]
-
-		pop = np.vstack([il,pop]).transpose()
-		print(pop)
-		print("Least Popular Topic:", least_pop)
-		
-		for t in topics:
-			if t.index == least_pop:
-				retval = t
-				return t
-
-		return None
 
 	def createStatistics(self):
 		self.tnp_count = np.zeros((self.numTopics, self.numTopics), int)
