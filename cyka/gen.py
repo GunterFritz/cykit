@@ -60,8 +60,13 @@ class Person:
 		print(" ", self.topic_A.name, self.rang_A)
 		print(" ", self.topic_B.name, self.rang_B)
 
-	def satisfaction(self):
-		return self.rang_A + self.rang_B
+	def satisfaction(self, t1 = None, t2 = None):
+		if t1 == None:
+			t1 = self.topic_A
+		if t2 == None:
+			t2 = self.topic_B
+		return self.getRank(t1.index) + self.getRank(t2.index)
+		#return self.rang_A + self.rang_B
 
 	def getNext(self, topic):
 		if self.topic_A == topic:
@@ -248,13 +253,18 @@ class Ring:
 		_persons = persons[:]
 		_startpoint = Topic.getLeastPopular(self.ring + rhs.ring, _persons)
 		if _startpoint in self.ring():
-			_ring = self.ring[:]
-		else:
 			_ring = rhs.ring[:]
+		else:
+			_ring = self.ring[:]
+
 		_pers = _startpoint.nPersonsLikeTopic(_persons, 2)
 
-		while tmp is not _ring[0]:
-			do
+		#make the v-connection
+		last = _ring[-1]
+		sat = 1000
+
+		for t in _ring:
+			_pers[1].satisfaction(last,_startpoint + pers[0].satisfaction(t, _startpoint))
 			
 		
 		#TODO : V connection than N
@@ -425,15 +435,19 @@ class Oktaeder:
 		self.persons = None
 
 	def build(self, topics, persons):
+		self.var = 1
 		self.ring,self.star,s1 = self.variants(topics, persons, 1)
 		r2,t2,s2 = self.variants(topics, persons, 2)
 
 		if s1 > s2:
 			self.ring = r2
 			self.star = t2
+			self.var = 2
 			print ("222222222222222222222222222222")
 		else:
 			print ("1111111111111111111111111111")
+		print ("s1:", s1)
+		print ("s2:", s2)
 
 	def variants(self, topics, persons, var):
 		#current architecture: 
@@ -589,7 +603,7 @@ class CyKaAlg:
 		print("-------------------------------")
 		self.oktaeder.printSatisfaction()
 		print("Satisfaction old        :", sat/i)
-		print("Satisfaction Oktaeder:", self.oktaeder.satisfaction)
+		print("Satisfaction Oktaeder:", self.oktaeder.getSatisfaction(), self.oktaeder.var)
 
 	def calculate(self):
 		o = Oktaeder()
