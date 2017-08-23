@@ -134,6 +134,12 @@ class Topic:
 		for p in pl:
 			self.assignPerson(p)
 
+	#return (one)connected topic by a person from list
+	def getNext(self, persons):
+		for p in persons:
+			if p in self.persons:
+				return p.getNext(self), p
+
 	#returns n persons who like topic most
 	#list is reverse sorted (person who dislike most is at first position)
 	def nPersonsLikeTopic(self, persons, num):
@@ -275,23 +281,38 @@ class Ring:
 			t.assignPerson(p)
 			_persons.remove(p)
 
-		self.closeRing(_persons)
+		return [self.head] + self.ring, self.pers
+		#self.closeRing(_persons)
 
 	def closeRing(self, persons):
 		_persons = persons[:]
 		#select for sorting
-		ring_persons = []
+		_ring_persons = []
+
 		for p, t1, t2 in self.selectRingPersons(self.ring, persons):
 			#select people to already selectd ting topics
 			t1.assignPerson(p)
 			t2.assignPerson(p)
-			ring_persons.append(p)
+			_ring_persons.append(p)
 			self.pers.append(p)
 			_persons.remove(p)
 
 		#sort ring
-		t = ring_persons[0].topic_A
-		#TODO sorting
+		_ring = []
+		t = self.ring[0]
+		_ring.append(t)
+		self.ring.remove(t)
+		retval = _ring_persons[:]
+		
+		while len(self.ring) > 0:
+			t, p = t.getNext(_ring_persons)
+			_ring.append(t)
+			self.ring.remove(t)
+			_ring_persons.remove(p)
+
+		self.ring = _ring
+
+		return None, retval
 
 	#sorts a list of topics into a ring(4 or 5 topics) and build the struts
 	def selectRingPersons(self, topics, persons, joker = False):
@@ -367,6 +388,8 @@ class Star:
 			center.assignPerson(p)
 			self.pers.append(p)
 			_persons.remove(p)
+
+		return [self.head], self.pers
 		
 
 class Ikosaeder:
@@ -402,14 +425,21 @@ class Oktaeder:
 		self.persons = None
 
 	def build(self, topics, persons):
+		self.ring,self.star,s1 = self.variants(topics, persons, 1)
+		r2,t2,s2 = self.variants(topics, persons, 2)
+
+		if s1 > s2:
+			self.ring = r2
+			self.star = t2
+			print ("222222222222222222222222222222")
+		else:
+			print ("1111111111111111111111111111")
+
+	def variants(self, topics, persons, var):
 		#current architecture: 
 		# 1 create a star with ring
 		# 2 create a star and connect to ring
 
-		#TODO second variant:
-		# 1 create two stars and connect it
-		# 2 close the ring
-		
 		#Build both and select better
 
 		self.topics = deepcopy(topics)
@@ -417,19 +447,29 @@ class Oktaeder:
 
 		#build ring
 		ring = Ring()
-		ring.build(self.topics, self.persons, 4)
+		t, p = ring.build(self.topics, self.persons, 4)
 
 		#remove objects, that next step uses only remainig
-		self.topics.remove(ring.head)
-		self.clear(ring.ring, ring.pers)
+		#self.topics.remove(ring.head)
+		self.clear(t, p)
+
+		if var == 1:
+			t, p = ring.closeRing(self.persons)
+			self.clear(t, p)
 
 		star = Star()
-		star.build(self.topics[0], ring.ring, self.persons)
+		t, p = star.build(self.topics[0], ring.ring, self.persons)
+		self.clear(t, p)
+		
+		if var != 1:
+			t, p = ring.closeRing(self.persons)
+			self.clear(t, p)
 
+		self.optimize(ring.pers + star.pers)
 		self.ring = ring
 		self.star = star
 
-		self.optimize()
+		return ring, star, self.getSatisfaction()
 
 	def clear(self, topics, pers):
 		if topics is not None:
