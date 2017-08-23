@@ -63,6 +63,13 @@ class Person:
 	def satisfaction(self):
 		return self.rang_A + self.rang_B
 
+	def getNext(self, topic):
+		if self.topic_A == topic:
+			return self.topic_B
+		elif self.topic_B == topic:
+			return self.topic_A
+		return None
+
 	def getRank(self, index):
 		for i in range(len(self.priorityList)):
 			if self.priorityList[i] == index:
@@ -99,6 +106,14 @@ class Person:
 				pers = p
 				rank = r
 		return pers
+	
+	#struts: tupple of Topics
+	@staticmethod
+	def getBest(persons, struts):
+		retval = []
+		for s in struts:
+			p = getMostSatisfied(persons, s[0], s[1])
+			retval.append((p, s[0], s[1]))
 
 class Topic:
 	def __init__(self, name, index):
@@ -223,6 +238,22 @@ class Ring:
 		self.pers = []
 		self.ring = []
 
+	def connect(self, rhs, persons):
+		_persons = persons[:]
+		_startpoint = Topic.getLeastPopular(self.ring + rhs.ring, _persons)
+		if _startpoint in self.ring():
+			_ring = self.ring[:]
+		else:
+			_ring = rhs.ring[:]
+		_pers = _startpoint.nPersonsLikeTopic(_persons, 2)
+
+		while tmp is not _ring[0]:
+			do
+			
+		
+		#TODO : V connection than N
+		# close ring
+
 	def build(self, topics, persons, num_ring_topics, num_missing = 0):
 		#do not change original
 		_topics = topics[:]
@@ -248,13 +279,19 @@ class Ring:
 
 	def closeRing(self, persons):
 		_persons = persons[:]
+		#select for sorting
+		ring_persons = []
 		for p, t1, t2 in self.selectRingPersons(self.ring, persons):
 			#select people to already selectd ting topics
 			t1.assignPerson(p)
 			t2.assignPerson(p)
+			ring_persons.append(p)
 			self.pers.append(p)
 			_persons.remove(p)
-			
+
+		#sort ring
+		t = ring_persons[0].topic_A
+		#TODO sorting
 
 	#sorts a list of topics into a ring(4 or 5 topics) and build the struts
 	def selectRingPersons(self, topics, persons, joker = False):
@@ -336,6 +373,26 @@ class Ikosaeder:
 	def __init__(self, persons = 30):				
 		self.numTopics = 12
 		self.numPersons = persons
+
+	def build(self, topics, persons):
+		self.topics = deepcopy(topics)
+		self.persons = deepcopy(persons)
+		
+		#build upper ring/pentagon
+		upper = Ring()
+		upper.build(self.topics, self.persons, 5)
+
+		#remove objects, that next step uses only remainig
+		self.topics.remove(upper.head)
+		self.clear(upper.ring, upper.pers)
+		
+		#build lower ring/pentagon
+		lower = Ring()
+		lower.build(self.topics, self.persons, 5)
+
+		#remove objects, that next step uses only remainig
+		self.topics.remove(upper.head)
+		self.clear(lower.ring, lower.pers)
 
 class Oktaeder:
 	def __init__(self, persons = 12):
