@@ -110,14 +110,14 @@ class Person:
 			if r < rank:
 				pers = p
 				rank = r
-		return pers
+		return pers, rank
 	
 	#struts: tupple of Topics
 	@staticmethod
 	def getBest(persons, struts):
 		retval = []
 		for s in struts:
-			p = getMostSatisfied(persons, s[0], s[1])
+			p, s = getMostSatisfied(persons, s[0], s[1])
 			retval.append((p, s[0], s[1]))
 
 class Topic:
@@ -252,23 +252,98 @@ class Ring:
 	def connect(self, rhs, persons):
 		_persons = persons[:]
 		_startpoint = Topic.getLeastPopular(self.ring + rhs.ring, _persons)
-		if _startpoint in self.ring():
+		if _startpoint in self.ring:
 			_ring = rhs.ring[:]
+			upper_ring = self
+			lower_ring = rhs
 		else:
 			_ring = self.ring[:]
+			lower_ring = self
+			upper_ring = rhs
 
 		_pers = _startpoint.nPersonsLikeTopic(_persons, 2)
 
-		#make the v-connection
+		#make the v-connection but do not connect, find only position
 		last = _ring[-1]
-		sat = 1000
+		strut = (1000, 0)
 
 		for t in _ring:
-			_pers[1].satisfaction(last,_startpoint + pers[0].satisfaction(t, _startpoint))
-			
+			tmp = self.vStrut(_pers[0], _pers[1], _startpoint, last, t)
+			last = t
+			if tmp[0] < strut[0]:
+				strut = tmp
+
+		#add person to strut
+		#self.activate(strut[1])
+		#self.activate(strut[2])
+
 		
-		#TODO : V connection than N
-		# close ring
+		tmp_upper = upper_ring.getNextTopic(_startpoint)
+		if lower_ring.getNextTopic(strut[1][2]) == strut[2][2]:
+			left = strut[1][2]
+			right = strut [2][2]
+		else:	
+			left = strut[2][2]
+			right = strut [1][2]
+		
+		tmp_lower = right
+		struts = []
+		while _startpoint != tmp_upper:
+			#zickzack
+			struts.append((tmp_upper, tmp_lower))
+			tmp_upper = upper_ring.getNextTopic(tmp_upper)
+			struts.append((tmp_upper, tmp_lower))
+			tmp_lower = lower_ring.getNextTopic(tmp_lower)
+
+		sat, res = self.getBest(_persons,struts)
+
+		retval = []
+		for r in res:
+			retval.append(self.activate(_person,r))
+
+		return retval
+		#todo N 
+
+	def vStrut(self, p1, p2, v, e1, e2):
+		sat1 = p1.satisfaction(v, e1) + p2.satisfaction(v, e2)
+		sat2 = p1.satisfaction(v, e2) + p2.satisfaction(v, e1)
+
+		if sat1 < sat2:
+			return (sat1, (p1, v, e1), (p2, v, e2))
+		else:
+			return (sat2, (p1, v, e2), (p2, v, e1))
+
+	def activate(self, pers, ptt):
+		pers.remove(ptt[0])
+		ptt[1].assignPerson(ptt[0])
+		ptt[2].assignPerson(ptt[0])
+		return ptt[0]
+		
+
+	def getBest(self, pers, struts):
+		if len(struts) == 1:
+			strut = struts[0]
+			p, sat = Person.getMostSatisfied(pers, strut[0], strut[1])
+			return sat, [p, strut[0], strut[1]]
+
+		satisfaction = 10000
+		retval = []
+
+		for s in struts:
+			_struts = struts[:]
+			_struts.remove(s)
+			_pers = pers
+			print(len(pers))
+			p, sat = Person.getMostSatisfied(pers, s[0], s[1])
+			print(p.name)
+			_pers.remove(p)
+			sat2, tub =  self.getBest(_pers, _struts)
+			if sat2 + sat < satisfaction:
+				satisfaction = sat2 + sat
+				retval = tub + [p, s]
+
+		return satisfaction, retval
+		
 
 	def build(self, topics, persons, num_ring_topics, num_missing = 0):
 		#do not change original
@@ -324,6 +399,17 @@ class Ring:
 
 		return None, retval
 
+	def getNextTopic(self, topic):
+		index = self.ring.index(topic)
+		if index + 1 == len(self.ring):
+			return self.ring[0]
+		else:
+			return self.ring[index + 1]
+
+	def getPrevTopic(self, topic):
+		index = self.ring.index(topic)
+		return self.ring[index-1]
+
 	#sorts a list of topics into a ring(4 or 5 topics) and build the struts
 	def selectRingPersons(self, topics, persons, joker = False):
 		_topics = topics[:]
@@ -357,7 +443,7 @@ class Ring:
 			_topics.remove(tmp)
 
 		#close last connection
-		p = Person.getMostSatisfied(_persons, end, tmp)
+		p, s = Person.getMostSatisfied(_persons, end, tmp)
 		retval.append((p,tmp,end))
 
 		return retval
@@ -393,7 +479,7 @@ class Star:
 		self.head.color ="black"
 		self.sat = topics
 		for t in topics:
-			p = Person.getMostSatisfied(_persons, center, t)
+			p, s = Person.getMostSatisfied(_persons, center, t)
 			t.assignPerson(p)
 			center.assignPerson(p)
 			self.pers.append(p)
@@ -406,6 +492,8 @@ class Ikosaeder:
 	def __init__(self, persons = 30):				
 		self.numTopics = 12
 		self.numPersons = persons
+		self.upper = None
+		self.lower = None
 
 	def build(self, topics, persons):
 		self.topics = deepcopy(topics)
@@ -424,8 +512,29 @@ class Ikosaeder:
 		lower.build(self.topics, self.persons, 5)
 
 		#remove objects, that next step uses only remainig
-		self.topics.remove(upper.head)
+		self.topics.remove(lower.head)
 		self.clear(lower.ring, lower.pers)
+
+		self.zickzack = lower.connect(upper,self.persons)
+		self.upper = upper
+		self.lower = lower	
+	
+	def clear(self, topics, pers):
+		if topics is not None:
+			for t in topics:
+				self.topics.remove(t)
+		if pers is not None:
+			for p in pers:
+				self.persons.remove(p)
+	
+	def printStructure(self):
+		print("-Ikosaeder--------------------------------------------")
+		self.ring.head.print()	
+		for t in self.upper.ring:
+			t.print()
+		for t in self.lower.ring:
+			t.print()
+		print("-----------------------------------------------------")
 
 class Oktaeder:
 	def __init__(self, persons = 12):
@@ -443,11 +552,6 @@ class Oktaeder:
 			self.ring = r2
 			self.star = t2
 			self.var = 2
-			print ("222222222222222222222222222222")
-		else:
-			print ("1111111111111111111111111111")
-		print ("s1:", s1)
-		print ("s2:", s2)
 
 	def variants(self, topics, persons, var):
 		#current architecture: 
@@ -555,6 +659,36 @@ class Oktaeder:
 
 		self.satisfaction = sat/i
 		print("Satisfaction:", self.satisfaction)
+
+class IkoTest:
+	def __init__(self, themen=6, persons=12):
+		self.numTopics = themen
+		self.numPersons = persons
+		self.persons = []
+		self.persons_stat = []
+		self.topics = []
+		if self.numTopics == 12:
+			self.struct = Ikosaeder() 
+		if self.numTopics == 6:
+			self.struct = Oktaeder()
+
+	#init the person table with random priority list
+	def random_init(self):
+		for i in range(0, self.numPersons):
+			name = "P_" + str(i).zfill(2)
+			p = Person(name)
+			p.random(self.numTopics)
+			self.persons.append(p)
+			self.persons_stat.append(p)
+		
+		for i in range(1, self.numTopics + 1):
+			name = "T_" + str(i).zfill(2)
+			p = Topic(name, i)
+			self.topics.append(p)
+
+	def run(self):
+		self.struct.build(self.topics, self.persons)
+		self.struct.printStructure()
 
 
 
@@ -739,13 +873,16 @@ if __name__ == '__main__':
 	#	p1 = Person(p)
 	#	p1.random(6)
 	#	p1.out()
-	
-	c = CyKaAlg()
-	c.random_init()
-	c.createStatistics()
-	c.print()
+
+	t = IkoTest(12, 30)	
+	t.random_init()
+	t.run()
+#	c = CyKaAlg()
+#	c.random_init()
+#	c.createStatistics()
+#	c.print()
 	#c.print_stat()
-	c.calculate()
-	c.print_static()
+#	c.calculate()
+#	c.print_static()
 	#s = Structure()
 	#s.print_empty()
