@@ -1,0 +1,160 @@
+[[  1 202]
+ [  2 198]
+ [  3 210]
+ [  4 204]
+ [  5 187]
+ [  6 207]
+ [  7 188]
+ [  8 207]
+ [  9 173]
+ [ 10 219]
+ [ 11 177]
+ [ 12 168]]
+Least Popular Topic: 12
+[[  5 148]
+ [  1 162]
+ [  9 146]
+ [  8 174]
+ [  3 175]]
+Least Popular Topic: 9
+[[  2 142]
+ [  4 132]
+ [  6 130]
+ [  7 136]
+ [ 10 167]
+ [ 11 119]]
+Least Popular Topic: 11
+[[ 10 119]
+ [  4  99]
+ [  7 105]
+ [  6 101]
+ [  2 111]]
+Least Popular Topic: 4
+[[10 71]
+ [ 6 59]
+ [ 7 64]
+ [ 4 69]
+ [ 2 71]
+ [ 5 78]
+ [ 8 76]
+ [ 1 77]
+ [ 9 65]
+ [ 3 58]]
+Least Popular Topic: 3
+start point to upper
+start right to lower
+start left to lower
+R: <__main__.Topic object at 0x7f4c0acccda0>
+L: <__main__.Topic object at 0x7f4c0acccdd8>
+R: <__main__.Topic object at 0x7f4c0acccda0>
+L: <__main__.Topic object at 0x7f4c0acccdd8>
+-Ikosaeder--------------------------------------------
+------------------
+white :
+  Name: T_12
+  Members:
+     P_11 , 5
+     P_02 , 5
+     P_21 , 4
+     P_04 , 3
+     P_01 , 3
+------------------
+black :
+  Name: T_05
+  Members:
+     P_11 , 1
+     P_13 , 10
+     P_10 , 2
+     P_24 , 6
+     P_28 , 1
+------------------
+silver :
+  Name: T_08
+  Members:
+     P_04 , 1
+     P_15 , 6
+     P_13 , 1
+     P_25 , 2
+     P_16 , 1
+------------------
+green :
+  Name: T_01
+  Members:
+     P_02 , 1
+     P_27 , 4
+     P_15 , 1
+     P_07 , 2
+     P_18 , 1
+------------------
+brown :
+  Name: T_09
+  Members:
+     P_21 , 1
+     P_06 , 2
+     P_27 , 1
+     P_23 , 2
+     P_29 , 3
+------------------
+dark blue :
+  Name: T_03
+  Members:
+     P_01 , 1
+     P_06 , 5
+     P_10 , 1
+     P_17 , 2
+     P_26 , 2
+------------------
+red :
+  Name: T_11
+  Members:
+     P_05 , 3
+     P_00 , 3
+     P_20 , 2
+     P_19 , 2
+     P_22 , 1
+------------------
+purple :
+  Name: T_02
+  Members:
+     P_22 , 5
+     P_14 , 2
+     P_03 , 3
+     P_29 , 6
+     P_17 , 3
+------------------
+yellow :
+  Name: T_04
+  Members:
+     P_00 , 1
+     P_14 , 1
+     P_08 , 1
+     P_24 , 1
+     P_26 , 5
+------------------
+orange :
+  Name: T_07
+  Members:
+     P_20 , 5
+     P_08 , 3
+     P_12 , 1
+     P_16 , 6
+     P_28 , 2
+------------------
+gold :
+  Name: T_06
+  Members:
+     P_19 , 3
+     P_12 , 3
+     P_09 , 1
+     P_18 , 7
+     P_25 , 1
+------------------
+light blue :
+  Name: T_10
+  Members:
+     P_05 , 1
+     P_09 , 2
+     P_03 , 1
+     P_23 , 3
+     P_07 , 1
+-----------------------------------------------------
