@@ -80,6 +80,9 @@ class Person:
 			if self.priorityList[i] == index:
 				return i + 1
 
+	def getStrut(self):
+		return self.topic_A.color + " - " + self.topic_B.color
+
 	def switchIfBetter(self, p2):
 		current = self.satisfaction() + p2.satisfaction()
 		
@@ -165,7 +168,7 @@ class Topic:
 		print("  Name:", self.name)
 		print("  Members:")
 		for p in self.persons:
-			print("    ", p.name, ",", p.getRank(self.index))
+			print("    ", p.name, ",", p.getRank(self.index), p.getStrut())
 
 	#calculates least popular topic	
 	@staticmethod
@@ -248,6 +251,7 @@ class Ring:
 		self.head = None
 		self.pers = []
 		self.ring = []
+		self.start = None
 
 	def connect(self, rhs, persons):
 		_persons = persons[:]
@@ -274,8 +278,11 @@ class Ring:
 				strut = tmp
 
 		#add person to strut
-		#self.activate(strut[1])
-		#self.activate(strut[2])
+		print("Strut 1: ", strut[1])
+		print("Strut 2: ", strut[2])
+		self.activate(_persons, strut[1])
+		self.activate(_persons, strut[2])
+		#_persons = persons[:]
 
 		
 		tmp_upper = upper_ring.getNextTopic(_startpoint)
@@ -285,24 +292,71 @@ class Ring:
 		else:	
 			left = strut[2][2]
 			right = strut [1][2]
-		
-		tmp_lower = right
-		struts = []
-		while _startpoint != tmp_upper:
-			#zickzack
-			struts.append((tmp_upper, tmp_lower))
-			tmp_upper = upper_ring.getNextTopic(tmp_upper)
-			struts.append((tmp_upper, tmp_lower))
-			tmp_lower = lower_ring.getNextTopic(tmp_lower)
 
+		upper_ring.start = _startpoint
+		print("start point to upper")
+		
+		struts = self.createZickZackEx(upper_ring, lower_ring,_startpoint,right,"right")
 		sat, res = self.getBest(_persons,struts)
+		lower_ring.start = right
+		print("start right to lower")
+
+		struts = self.createZickZackEx(upper_ring, lower_ring,_startpoint,left,"left")
+		satl, resl = self.getBest(_persons,struts)
+
+		if satl < sat:
+			res = resl
+			print("start left to lower")
+			lower_ring.start = left
+			lower_ring.ring = list(reversed(lower_ring.ring))
 
 		retval = []
 		for r in res:
-			retval.append(self.activate(_person,r))
+			retval.append(self.activate(_persons,r))
 
 		return retval
-		#todo N 
+		#todo N
+
+	def createZickZack(self, ring_upper, ring_lower, start_upper, start_lower, direction):
+		struts = []
+		tmp_upper = start_upper
+		tmp_lower = start_lower
+		while True: 
+			struts.append((tmp_upper, tmp_lower))
+			tmp_upper = ring_upper.getNextTopic(tmp_upper)
+			struts.append((tmp_upper, tmp_lower))
+			if direction == "right":
+				tmp_lower = ring_lower.getNextTopic(tmp_lower)
+			else:
+				tmp_lower = ring_lower.getPrevTopic(tmp_lower)
+			if start_upper == tmp_upper:
+				break
+
+		return struts
+
+	#creates ZickZack but excludes V connection (speed optimization)
+	def createZickZackEx(self, ring_upper, ring_lower, start_upper, start_lower, direction):
+		struts = []
+		if direction == "right":
+			tmp_upper = ring_upper.getNextTopic(start_upper)
+			tmp_lower = start_lower
+			end = ring_lower.getPrevTopic(start_lower)
+		else:
+			tmp_upper = ring_upper.getPrevTopic(start_upper)
+			tmp_lower = start_lower
+			end = ring_lower.getNextTopic(start_lower)
+		while True:
+			struts.append((tmp_upper, tmp_lower))
+			if direction == "right":
+				tmp_lower = ring_lower.getNextTopic(tmp_lower)
+			else:
+				tmp_lower = ring_lower.getPrevTopic(tmp_lower)
+			struts.append((tmp_upper, tmp_lower))
+			tmp_upper = ring_upper.getNextTopic(tmp_upper)
+			if end == tmp_lower:
+				break
+
+		return struts
 
 	def vStrut(self, p1, p2, v, e1, e2):
 		sat1 = p1.satisfaction(v, e1) + p2.satisfaction(v, e2)
@@ -313,6 +367,7 @@ class Ring:
 		else:
 			return (sat2, (p1, v, e2), (p2, v, e1))
 
+	#removes Person from list and assigns to topics(strut)
 	def activate(self, pers, ptt):
 		pers.remove(ptt[0])
 		ptt[1].assignPerson(ptt[0])
@@ -324,23 +379,24 @@ class Ring:
 		if len(struts) == 1:
 			strut = struts[0]
 			p, sat = Person.getMostSatisfied(pers, strut[0], strut[1])
-			return sat, [p, strut[0], strut[1]]
+			#todo, do not check only for satisafaction but to for least satisfaction
+			return sat, [(p, strut[0], strut[1])]
+			#return (sat,max(p.getRank(strut[0],p.getRank(strut[1])), [(p, strut[0], strut[1])]
 
 		satisfaction = 10000
 		retval = []
+		max_pers = 20
 
 		for s in struts:
 			_struts = struts[:]
+			_pers = pers[:]
 			_struts.remove(s)
-			_pers = pers
-			print(len(pers))
-			p, sat = Person.getMostSatisfied(pers, s[0], s[1])
-			print(p.name)
+			p, sat = Person.getMostSatisfied(_pers, s[0], s[1])
 			_pers.remove(p)
 			sat2, tub =  self.getBest(_pers, _struts)
 			if sat2 + sat < satisfaction:
 				satisfaction = sat2 + sat
-				retval = tub + [p, s]
+				retval = tub + [(p, s[0], s[1])]
 
 		return satisfaction, retval
 		
@@ -398,6 +454,13 @@ class Ring:
 		self.ring = _ring
 
 		return None, retval
+
+	def colorize(self, colors):
+		self.head.color = colors[0]
+		tmp = self.start
+		for c in colors:
+			tmp.color = c
+			tmp = self.getNextTopic(tmp)
 
 	def getNextTopic(self, topic):
 		index = self.ring.index(topic)
@@ -494,30 +557,43 @@ class Ikosaeder:
 		self.numPersons = persons
 		self.upper = None
 		self.lower = None
+		self.upper_colors = [ "white", "black", "silver", "green", "brown", "dark blue" ]
+		self.lower_colors = [ "red", "orange", "gold", "light blue", "purple", "yellow" ]
 
 	def build(self, topics, persons):
 		self.topics = deepcopy(topics)
 		self.persons = deepcopy(persons)
+		comp_t = self.topics[:]
+		comp_p = self.persons[:]
 		
 		#build upper ring/pentagon
 		upper = Ring()
-		upper.build(self.topics, self.persons, 5)
+		t, p = upper.build(self.topics, self.persons, 5)
+		self.clear(t, p)
+		t, p = upper.closeRing(self.persons)
+		self.clear(t, p)
 
-		#remove objects, that next step uses only remainig
-		self.topics.remove(upper.head)
-		self.clear(upper.ring, upper.pers)
-		
+		#self.optimize(ring.pers + star.pers)
+
 		#build lower ring/pentagon
 		lower = Ring()
-		lower.build(self.topics, self.persons, 5)
-
-		#remove objects, that next step uses only remainig
-		self.topics.remove(lower.head)
-		self.clear(lower.ring, lower.pers)
+		t, p = lower.build(self.topics, self.persons, 5)
+		self.clear(t, p)
+		t, p = lower.closeRing(self.persons)
+		self.clear(t, p)
 
 		self.zickzack = lower.connect(upper,self.persons)
 		self.upper = upper
-		self.lower = lower	
+		self.lower = lower
+		print("R:",upper.start)
+		print("L:",lower.start)
+		print("R:",self.upper.start)
+		print("L:",self.lower.start)
+		self.upper.colorize(self.upper_colors)	
+		self.lower.colorize(self.lower_colors)	
+		
+		self.topics = comp_t
+		self.persons = comp_p
 	
 	def clear(self, topics, pers):
 		if topics is not None:
@@ -529,12 +605,28 @@ class Ikosaeder:
 	
 	def printStructure(self):
 		print("-Ikosaeder--------------------------------------------")
-		self.ring.head.print()	
+		self.upper.head.print()	
 		for t in self.upper.ring:
 			t.print()
+		self.lower.head.print()	
 		for t in self.lower.ring:
 			t.print()
 		print("-----------------------------------------------------")
+
+	def printStatistics(self):
+		mins = 0
+		sat = 0
+		for p in self.persons:
+			s =  p.satisfaction()
+			print("S:", p.name, s)
+			sat = sat + s
+			if s > mins:
+				mins = s
+				lp = p
+
+		print("Satisfaction: ", sat/self.numPersons)
+		print("unsatisfied Person: ")
+		lp.print_static()
 
 class Oktaeder:
 	def __init__(self, persons = 12):
@@ -689,6 +781,7 @@ class IkoTest:
 	def run(self):
 		self.struct.build(self.topics, self.persons)
 		self.struct.printStructure()
+		self.struct.printStatistics()
 
 
 
