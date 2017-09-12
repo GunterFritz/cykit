@@ -65,6 +65,8 @@ class Person:
 			t1 = self.topic_A
 		if t2 == None:
 			t2 = self.topic_B
+		if t1 == None or t2 == None:
+			return None
 		return self.getRank(t1.index) + self.getRank(t2.index)
 		#return self.rang_A + self.rang_B
 
@@ -80,7 +82,7 @@ class Person:
 			if self.priorityList[i] == index:
 				return i + 1
 
-	def getStrut(self):
+	def getStrutAsString(self):
 		return self.topic_A.color + " - " + self.topic_B.color
 
 	def switchIfBetter(self, p2):
@@ -168,7 +170,7 @@ class Topic:
 		print("  Name:", self.name)
 		print("  Members:")
 		for p in self.persons:
-			print("    ", p.name, ",", p.getRank(self.index), p.getStrut())
+			print("    ", p.name, ",", p.getRank(self.index), p.getStrutAsString())
 
 	#calculates least popular topic	
 	@staticmethod
@@ -207,15 +209,27 @@ class Topic:
 		return None
 
 
-class Structure:
+class StructureTest:
 	def __init__(self):
 		self.structure = []
 		#Oktaeder
-		#self.colors = [("white", 1), ("green", 2), ("blue", 3), ("yellow", 4), ("red", 5), ("black", 6)]
+		self.iko_colors = { "white" : 1, "black" : 2, "silver" : 3, "green" : 4, "brown" : 5, "dark blue" : 6, 
+			"red" : 7, "orange" : 8 , "gold" :9, "light blue" : 10, "purple" : 11, "yellow" : 12 }
+		self.iko_struts = [(1,2),(1,3),(1,4),(1,5),(1,6),
+				   (2,3),(3,4),(4,5),(5,6),(6,2),
+				   (2,12),(6,12),(6,11),(5,11),(5,10),
+				   (4,10),(4,9),(3,9),(3,8),(2,8),
+				   (8,9),(9,10),(10,11),(11,12),(12,8),
+				   (7,8),(7,9),(7,10),(7,11),(7,12)]
 		self.colors = {"white" : 1, "green": 2, "blue": 3, "yellow": 4, "red": 5, "black": 6}
 		self.colors = {1 : "white", 2: "green", 3:"blue", 4:"yellow", 5:"red", 6:"black"}
 		self.connections = [(1,2),(1,3),(1,4),(1,5),(2,3),(3,4),(4,5),(5,2),(6,2),(6,3),(6,4),(6,5)]
 		self.translate()
+
+	def test(self, persons):
+		pers = persons[:]
+		for p in persons:
+			p.getStrut()
 
 	def translate(self):
 		self.struts = []
@@ -253,6 +267,20 @@ class Ring:
 		self.ring = []
 		self.start = None
 
+	"""
+	connects two Rings with a zickzack line
+	
+	params
+	------
+	rhs: Ring
+		right hand side ring
+	person: Person[]
+		list of persons that can be used
+
+	return
+	------
+	Person[]: list of assigned Persons
+	"""
 	def connect(self, rhs, persons):
 		_persons = persons[:]
 		_startpoint = Topic.getLeastPopular(self.ring + rhs.ring, _persons)
@@ -278,11 +306,8 @@ class Ring:
 				strut = tmp
 
 		#add person to strut
-		print("Strut 1: ", strut[1])
-		print("Strut 2: ", strut[2])
 		self.activate(_persons, strut[1])
 		self.activate(_persons, strut[2])
-		#_persons = persons[:]
 
 		
 		tmp_upper = upper_ring.getNextTopic(_startpoint)
@@ -294,19 +319,21 @@ class Ring:
 			right = strut [1][2]
 
 		upper_ring.start = _startpoint
-		print("start point to upper")
 		
+		#create struts, both rings right direction
 		struts = self.createZickZackEx(upper_ring, lower_ring,_startpoint,right,"right")
+		#assign persons to struts
 		sat, res = self.getBest(_persons,struts)
 		lower_ring.start = right
-		print("start right to lower")
 
+		#create struts, one ring right direction, one ring left
 		struts = self.createZickZackEx(upper_ring, lower_ring,_startpoint,left,"left")
+		#assign persons to struts
 		satl, resl = self.getBest(_persons,struts)
 
+		#take connection with more satisfaction
 		if satl < sat:
 			res = resl
-			print("start left to lower")
 			lower_ring.start = left
 			lower_ring.ring = list(reversed(lower_ring.ring))
 
@@ -315,7 +342,6 @@ class Ring:
 			retval.append(self.activate(_persons,r))
 
 		return retval
-		#todo N
 
 	def createZickZack(self, ring_upper, ring_lower, start_upper, start_lower, direction):
 		struts = []
@@ -549,9 +575,41 @@ class Star:
 			_persons.remove(p)
 
 		return [self.head], self.pers
-		
 
-class Ikosaeder:
+class Structure:
+	def __init__(self):
+		self.numTopics = 0		
+		self.numPersons = 0		
+	
+	"""
+	prints the satisfaction from all persons and calculates the average
+	
+	params
+	------
+
+	return
+	------
+	int average satisfaction
+	"""
+	def printStatistics(self):
+		mins = 0
+		sat = 0
+		for p in self.persons:
+			s =  p.satisfaction()
+			print(p.name, s)
+			if s == None:
+				continue
+			sat = sat + s
+			if s > mins:
+				mins = s
+				lp = p
+
+		print("average satisfaction: ", sat/self.numPersons)
+		print("less satisfied person: ")
+		lp.print_static()
+
+
+class Ikosaeder(Structure):
 	def __init__(self, persons = 30):				
 		self.numTopics = 12
 		self.numPersons = persons
@@ -612,21 +670,6 @@ class Ikosaeder:
 		for t in self.lower.ring:
 			t.print()
 		print("-----------------------------------------------------")
-
-	def printStatistics(self):
-		mins = 0
-		sat = 0
-		for p in self.persons:
-			s =  p.satisfaction()
-			print("S:", p.name, s)
-			sat = sat + s
-			if s > mins:
-				mins = s
-				lp = p
-
-		print("Satisfaction: ", sat/self.numPersons)
-		print("unsatisfied Person: ")
-		lp.print_static()
 
 class Oktaeder:
 	def __init__(self, persons = 12):
@@ -967,7 +1010,7 @@ if __name__ == '__main__':
 	#	p1.random(6)
 	#	p1.out()
 
-	t = IkoTest(12, 30)	
+	t = IkoTest(12, 31)	
 	t.random_init()
 	t.run()
 #	c = CyKaAlg()
