@@ -30,8 +30,11 @@ class Person:
 		print("ERROR 1", self.name)
 		return None
 
-	def out(self):
-		print(self.name, self.priorityList)
+	def out(self, fobj = None):
+		if fobj == None:
+			print(self.name, self.priorityList)
+		else:
+			fobj.write(self.name + " " + str(self.priorityList) + "\n")
 
 	def assignToTopic(self, topic):
 		if self.topic_A == None:
@@ -255,6 +258,7 @@ class StructureTest:
 				print("Error:", "no person for strut", s)
 		
 		print("Errors:", errors)
+		return errors
 		
 			
 
@@ -861,7 +865,14 @@ class IkoTest:
 
 	def test(self):
 		t = StructureTest()
-		t.test(self.struct.persons)
+		err = t.test(self.struct.persons)
+		if err > 0:
+			fobj = open("yellow_err.txt", "w")
+		else:
+			fobj = open("yellow.txt", "w")
+
+		for p in self.persons:
+			p.out(fobj)
 
 
 class CyKaAlg:
