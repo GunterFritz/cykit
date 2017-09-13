@@ -85,6 +85,9 @@ class Person:
 	def getStrutAsString(self):
 		return self.topic_A.color + " - " + self.topic_B.color
 
+	def getStrut(self):
+		return (self.topic_A.color, self.topic_B.color)
+
 	def switchIfBetter(self, p2):
 		current = self.satisfaction() + p2.satisfaction()
 		
@@ -216,10 +219,11 @@ class StructureTest:
 		self.iko_colors = { "white" : 1, "black" : 2, "silver" : 3, "green" : 4, "brown" : 5, "dark blue" : 6, 
 			"red" : 7, "orange" : 8 , "gold" :9, "light blue" : 10, "purple" : 11, "yellow" : 12 }
 		self.iko_struts = [(1,2),(1,3),(1,4),(1,5),(1,6),
-				   (2,3),(3,4),(4,5),(5,6),(6,2),
+				   (2,3),(3,4),(4,5),(5,6),(2,6),
 				   (2,12),(6,12),(6,11),(5,11),(5,10),
+				   #(1,7),(6,12),(6,11),(5,11),(5,10),
 				   (4,10),(4,9),(3,9),(3,8),(2,8),
-				   (8,9),(9,10),(10,11),(11,12),(12,8),
+				   (8,9),(9,10),(10,11),(11,12),(8,12),
 				   (7,8),(7,9),(7,10),(7,11),(7,12)]
 		self.colors = {"white" : 1, "green": 2, "blue": 3, "yellow": 4, "red": 5, "black": 6}
 		self.colors = {1 : "white", 2: "green", 3:"blue", 4:"yellow", 5:"red", 6:"black"}
@@ -228,8 +232,31 @@ class StructureTest:
 
 	def test(self, persons):
 		pers = persons[:]
+		struts = self.iko_struts[:]
+		errors = 0
 		for p in persons:
-			p.getStrut()
+			strut = p.getStrut()
+			tmp1 = self.iko_colors[strut[0]]
+			tmp2 = self.iko_colors[strut[1]]
+			if tmp1 is None or tmp2 is None:
+				errors = errors + 1
+				print("Error:", "no strut for person:", p.name)
+			
+			n1 = min(tmp1,tmp2)
+			n2 = max(tmp1,tmp2)
+			if (n1,n2) in struts:
+				struts.remove((n1,n2))
+			else:
+				errors = errors + 1
+				print("Error:", strut, "not in list", (n1,n2))
+
+		for s in struts:
+				errors = errors + 1
+				print("Error:", "no person for strut", s)
+		
+		print("Errors:", errors)
+		
+			
 
 	def translate(self):
 		self.struts = []
@@ -285,30 +312,30 @@ class Ring:
 		_persons = persons[:]
 		_startpoint = Topic.getLeastPopular(self.ring + rhs.ring, _persons)
 		if _startpoint in self.ring:
-			_ring = rhs.ring[:]
 			upper_ring = self
 			lower_ring = rhs
 		else:
-			_ring = self.ring[:]
-			lower_ring = self
 			upper_ring = rhs
+			lower_ring = self
 
 		_pers = _startpoint.nPersonsLikeTopic(_persons, 2)
 
 		#make the v-connection but do not connect, find only position
-		last = _ring[-1]
+		last = lower_ring.ring[-1]
 		strut = (1000, 0)
 
-		for t in _ring:
+		for t in lower_ring.ring:
+			if lower_ring.getNextTopic(last) is not t:
+				print("last not t")
+				blub
 			tmp = self.vStrut(_pers[0], _pers[1], _startpoint, last, t)
-			last = t
 			if tmp[0] < strut[0]:
 				strut = tmp
+			last = t
 
 		#add person to strut
 		self.activate(_persons, strut[1])
 		self.activate(_persons, strut[2])
-
 		
 		tmp_upper = upper_ring.getNextTopic(_startpoint)
 		if lower_ring.getNextTopic(strut[1][2]) == strut[2][2]:
@@ -319,6 +346,7 @@ class Ring:
 			right = strut [1][2]
 
 		upper_ring.start = _startpoint
+		direction = "right"
 		
 		#create struts, both rings right direction
 		struts = self.createZickZackEx(upper_ring, lower_ring,_startpoint,right,"right")
@@ -333,6 +361,7 @@ class Ring:
 
 		#take connection with more satisfaction
 		if satl < sat:
+			direction = "left"
 			res = resl
 			lower_ring.start = left
 			lower_ring.ring = list(reversed(lower_ring.ring))
@@ -341,7 +370,7 @@ class Ring:
 		for r in res:
 			retval.append(self.activate(_persons,r))
 
-		return retval
+		return upper_ring, lower_ring, direction, retval
 
 	def createZickZack(self, ring_upper, ring_lower, start_upper, start_lower, direction):
 		struts = []
@@ -383,7 +412,9 @@ class Ring:
 				break
 
 		return struts
-
+	"""
+	creates two struts e1-v and v-e2
+	"""
 	def vStrut(self, p1, p2, v, e1, e2):
 		sat1 = p1.satisfaction(v, e1) + p2.satisfaction(v, e2)
 		sat2 = p1.satisfaction(v, e2) + p2.satisfaction(v, e1)
@@ -484,7 +515,7 @@ class Ring:
 	def colorize(self, colors):
 		self.head.color = colors[0]
 		tmp = self.start
-		for c in colors:
+		for c in colors[1:]:
 			tmp.color = c
 			tmp = self.getNextTopic(tmp)
 
@@ -640,9 +671,7 @@ class Ikosaeder(Structure):
 		t, p = lower.closeRing(self.persons)
 		self.clear(t, p)
 
-		self.zickzack = lower.connect(upper,self.persons)
-		self.upper = upper
-		self.lower = lower
+		self.upper, self.lower, self.direction, self.zickzack = lower.connect(upper,self.persons)
 		print("R:",upper.start)
 		print("L:",lower.start)
 		print("R:",self.upper.start)
@@ -660,6 +689,9 @@ class Ikosaeder(Structure):
 		if pers is not None:
 			for p in pers:
 				self.persons.remove(p)
+
+	def printAdditional(self):
+		print("Direction: ", self.direction)
 	
 	def printStructure(self):
 		print("-Ikosaeder--------------------------------------------")
@@ -825,7 +857,11 @@ class IkoTest:
 		self.struct.build(self.topics, self.persons)
 		self.struct.printStructure()
 		self.struct.printStatistics()
+		self.struct.printAdditional()
 
+	def test(self):
+		t = StructureTest()
+		t.test(self.struct.persons)
 
 
 class CyKaAlg:
@@ -1010,9 +1046,10 @@ if __name__ == '__main__':
 	#	p1.random(6)
 	#	p1.out()
 
-	t = IkoTest(12, 31)	
+	t = IkoTest(12, 30)	
 	t.random_init()
 	t.run()
+	t.test()
 #	c = CyKaAlg()
 #	c.random_init()
 #	c.createStatistics()
