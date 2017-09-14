@@ -373,7 +373,7 @@ class Ring:
 		satl, resl = self.getBest(_persons,struts)
 
 		#take connection with more satisfaction
-		if satl < sat or True:
+		if satl < sat:
 			direction = "left"
 			res = resl
 			lower_ring.start = left
@@ -405,12 +405,12 @@ class Ring:
 	#creates ZickZack but excludes V connection (speed optimization)
 	def createZickZackEx(self, ring_upper, ring_lower, start_upper, start_lower, direction):
 		struts = []
+		tmp_upper = ring_upper.getNextTopic(start_upper)
 		if direction == "right":
-			tmp_upper = ring_upper.getNextTopic(start_upper)
 			tmp_lower = start_lower
 			end = ring_lower.getPrevTopic(start_lower)
 		else:
-			tmp_upper = ring_upper.getPrevTopic(start_upper)
+			#tmp_upper = ring_upper.getPrevTopic(start_upper)
 			tmp_lower = start_lower
 			end = ring_lower.getNextTopic(start_lower)
 		while True:
