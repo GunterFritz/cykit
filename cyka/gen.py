@@ -19,6 +19,11 @@ class Person:
 			self.priorityList.append(i)
 
 		shuffle(self.priorityList)
+
+	def listinput(self, l):
+		for i in l:
+			self.priorityList.append(int(i))
+		print(self.name, self.priorityList)
 	
 	#returns the most beautiful topic from a list of topics
 	def getMostBeautyfulTopic(self, topics):
@@ -34,7 +39,11 @@ class Person:
 		if fobj == None:
 			print(self.name, self.priorityList)
 		else:
-			fobj.write(self.name + " " + str(self.priorityList) + "\n")
+			#fobj.write(self.name + ";" + str(self.priorityList) + "\n")
+			fobj.write(self.name)
+			for t in self.priorityList:
+				fobj.write(";" + str(t))
+			fobj.write("\n")
 
 	def assignToTopic(self, topic):
 		if self.topic_A == None:
@@ -329,9 +338,6 @@ class Ring:
 		strut = (1000, 0)
 
 		for t in lower_ring.ring:
-			if lower_ring.getNextTopic(last) is not t:
-				print("last not t")
-				blub
 			tmp = self.vStrut(_pers[0], _pers[1], _startpoint, last, t)
 			if tmp[0] < strut[0]:
 				strut = tmp
@@ -340,14 +346,17 @@ class Ring:
 		#add person to strut
 		self.activate(_persons, strut[1])
 		self.activate(_persons, strut[2])
-		
-		tmp_upper = upper_ring.getNextTopic(_startpoint)
+	
 		if lower_ring.getNextTopic(strut[1][2]) == strut[2][2]:
 			left = strut[1][2]
 			right = strut [2][2]
 		else:	
 			left = strut[2][2]
 			right = strut [1][2]
+		
+		print("V: ", _startpoint.name, upper_ring.ring.index(_startpoint))	
+		print("E: ", left.name, lower_ring.ring.index(left))	
+		print("E: ", right.name, lower_ring.ring.index(right))	
 
 		upper_ring.start = _startpoint
 		direction = "right"
@@ -364,7 +373,7 @@ class Ring:
 		satl, resl = self.getBest(_persons,struts)
 
 		#take connection with more satisfaction
-		if satl < sat:
+		if satl < sat or True:
 			direction = "left"
 			res = resl
 			lower_ring.start = left
@@ -843,6 +852,21 @@ class IkoTest:
 		if self.numTopics == 6:
 			self.struct = Oktaeder()
 
+	def file_init(self, filename):
+		fobj = open(filename)
+		for line in fobj:
+			p = Person(line.split(';')[0])
+			p.listinput(line.split(';')[1:])
+			self.persons.append(p)
+			self.persons_stat.append(p)
+		
+		for i in range(1, self.numTopics + 1):
+			name = "T_" + str(i).zfill(2)
+			p = Topic(name, i)
+			self.topics.append(p)
+
+		return None
+
 	#init the person table with random priority list
 	def random_init(self):
 		for i in range(0, self.numPersons):
@@ -1056,9 +1080,16 @@ if __name__ == '__main__':
 	#	p1 = Person(p)
 	#	p1.random(6)
 	#	p1.out()
+	filename = None
+	for i in range(len(sys.argv)):
+		if sys.argv[i] == "-f":
+			filename = sys.argv[i+1]
 
-	t = IkoTest(12, 30)	
-	t.random_init()
+	t = IkoTest(12, 30)
+	if filename is None:
+		t.random_init()
+	else:
+		t.file_init(filename)
 	t.run()
 	t.test()
 #	c = CyKaAlg()
