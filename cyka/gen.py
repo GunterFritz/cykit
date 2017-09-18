@@ -652,6 +652,18 @@ class Structure:
 		print("less satisfied person: ")
 		lp.print_static()
 
+	def optimize(self, pers = None):
+		#if pers is None:
+		#	pers = self.ring.pers + self.star.pers
+		
+		pers.sort(key=operator.methodcaller("satisfaction"), reverse=True)
+
+		for p1 in pers:
+			for p2 in pers:
+				if p1 == p2:
+					continue
+				p1.switchIfBetter(p2)
+
 
 class Ikosaeder(Structure):
 	def __init__(self, persons = 30):				
@@ -673,6 +685,7 @@ class Ikosaeder(Structure):
 		t, p = upper.build(self.topics, self.persons, 5)
 		self.clear(t, p)
 		t, p = upper.closeRing(self.persons)
+		self.optimize(p)
 		self.clear(t, p)
 
 		#self.optimize(ring.pers + star.pers)
@@ -683,17 +696,16 @@ class Ikosaeder(Structure):
 		self.clear(t, p)
 		t, p = lower.closeRing(self.persons)
 		self.clear(t, p)
+		self.optimize(p)
 
 		self.upper, self.lower, self.direction, self.zickzack = lower.connect(upper,self.persons)
-		print("R:",upper.start)
-		print("L:",lower.start)
-		print("R:",self.upper.start)
-		print("L:",self.lower.start)
+		self.optimize(self.zickzack)
 		self.upper.colorize(self.upper_colors)	
 		self.lower.colorize(self.lower_colors)	
 		
 		self.topics = comp_t
 		self.persons = comp_p
+		self.optimize(self.persons)
 	
 	def clear(self, topics, pers):
 		if topics is not None:
