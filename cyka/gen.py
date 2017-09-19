@@ -68,9 +68,9 @@ class Person:
 			out
 
 	def print_static(self):
-		print(self.name)
-		print(" ", self.topic_A.name, self.rang_A)
-		print(" ", self.topic_B.name, self.rang_B)
+		print(self.name, self.satisfaction(), self.topic_A.color, "(", self.rang_A, ")", self.topic_B.color, "(", self.rang_B, ")")
+		#print(" ", self.topic_A.name, self.rang_A)
+		#print(" ", self.topic_B.name, self.rang_B)
 
 	def satisfaction(self, t1 = None, t2 = None):
 		if t1 == None:
@@ -638,9 +638,10 @@ class Structure:
 	def printStatistics(self):
 		mins = 0
 		sat = 0
+		self.persons.sort(key=operator.methodcaller("satisfaction"), reverse=True)
 		for p in self.persons:
 			s =  p.satisfaction()
-			print(p.name, s)
+			p.print_static()
 			if s == None:
 				continue
 			sat = sat + s
