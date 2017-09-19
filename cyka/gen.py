@@ -48,13 +48,27 @@ class Person:
 	def assignToTopic(self, topic):
 		if self.topic_A == None:
 			self.topic_A = topic
-			self.rang_A = self.getRank(topic.index)
+			self.rang_A = self.getRank(topic)
 		elif self.topic_B == None:
 			self.topic_B = topic
-			self.rang_B = self.getRank(topic.index)
+			self.rang_B = self.getRank(topic)
 		else:
 			print("ERROR 2", self.name)
 			out
+
+	def clear(self):
+		r1 = self.topic_A
+		r2 = self.topic_B
+		if self.topic_A != None:
+			self.topic_A.removeAssignment(self)
+			self.topic_A = None
+			self.rang_A = 0
+		if self.topic_B != None:
+			self.topic_B.removeAssignment(self)
+			self.topic_B = None
+			self.rang_B = 0
+
+		return r1, r2
 
 	def removeAssignment(self, topic):
 		if self.topic_A == topic:
@@ -77,9 +91,9 @@ class Person:
 			t1 = self.topic_A
 		if t2 == None:
 			t2 = self.topic_B
-		if t1 == None or t2 == None:
-			return None
-		return self.getRank(t1.index) + self.getRank(t2.index)
+		#if t1 == None or t2 == None:
+		#	return None
+		return self.getRank(t1) + self.getRank(t2)
 		#return self.rang_A + self.rang_B
 
 	def getNext(self, topic):
@@ -89,9 +103,11 @@ class Person:
 			return self.topic_A
 		return None
 
-	def getRank(self, index):
+	def getRank(self, topic):
+		if topic == None:
+			return len(self.priorityList) + 1
 		for i in range(len(self.priorityList)):
-			if self.priorityList[i] == index:
+			if self.priorityList[i] == topic.index:
 				return i + 1
 
 	def getStrutAsString(self):
@@ -103,22 +119,21 @@ class Person:
 	def switchIfBetter(self, p2):
 		current = self.satisfaction() + p2.satisfaction()
 		
-		tmp = self.getRank(p2.topic_A.index) + self.getRank(p2.topic_B.index)
-		tmp = tmp + p2.getRank(self.topic_A.index) + p2.getRank(self.topic_B.index)
+		tmp = self.getRank(p2.topic_A) + self.getRank(p2.topic_B)
+		tmp = tmp + p2.getRank(self.topic_A) + p2.getRank(self.topic_B)
 
 		if tmp < current:
-			print("--SWITCH__")
-			tmp_a = p2.topic_A
-			tmp_b = p2.topic_B
-			tmp_a.removeAssignment(p2)
-			tmp_b.removeAssignment(p2)
-			self.topic_A.assignPerson(p2)
-			self.topic_B.assignPerson(p2)
-			self.topic_A.removeAssignment(self)
-			self.topic_B.removeAssignment(self)
-			tmp_a.assignPerson(self)
-			tmp_b.assignPerson(self)
-			
+			print("--SWITCH--")
+			tmp_a1, tmp_b1 = p2.clear()
+			tmp_a2, tmp_b2 = self.clear()
+			if tmp_a1 != None:
+				tmp_a1.assignPerson(self)
+			if tmp_b1 != None:
+				tmp_b1.assignPerson(self)
+			if tmp_a2 != None:
+				tmp_a2.assignPerson(p2)
+			if tmp_b2 != None:
+				tmp_b2.assignPerson(p2)
 
 
 	@staticmethod
@@ -126,7 +141,7 @@ class Person:
 		rank = 1000
 		pers = None
 		for p in persons:
-			r = p.getRank(topic1.index) + p.getRank(topic2.index)
+			r = p.getRank(topic1) + p.getRank(topic2)
 			if r < rank:
 				pers = p
 				rank = r
@@ -153,7 +168,7 @@ class Topic:
 
 	def removeAssignment(self, p):
 		self.persons.remove(p)
-		p.removeAssignment(self)
+		#p.removeAssignment(self)
 	
 	def assignPersons(self, pl):
 		for p in pl:
@@ -185,7 +200,7 @@ class Topic:
 		print("  Name:", self.name)
 		print("  Members:")
 		for p in self.persons:
-			print("    ", p.name, ",", p.getRank(self.index), p.getStrutAsString())
+			print("    ", p.name, ",", p.getRank(self), p.getStrutAsString())
 
 	#calculates least popular topic	
 	@staticmethod
@@ -451,7 +466,6 @@ class Ring:
 			p, sat = Person.getMostSatisfied(pers, strut[0], strut[1])
 			#todo, do not check only for satisafaction but to for least satisfaction
 			return sat, [(p, strut[0], strut[1])]
-			#return (sat,max(p.getRank(strut[0],p.getRank(strut[1])), [(p, strut[0], strut[1])]
 
 		satisfaction = 10000
 		retval = []
@@ -588,7 +602,7 @@ class Ring:
 
 		#sort by center
 		if center is not None:
-			persons.sort(key=operator.methodcaller("getRank", center.index), reverse=True)
+			persons.sort(key=operator.methodcaller("getRank", center), reverse=True)
 
 		assignment = []
 		for p in persons:
@@ -1016,14 +1030,14 @@ class CyKaAlg:
 		ring[0].assignPerson(self.persons[0])		
 		ring[0].assignPerson(self.persons[1])
 
-		m = max(self.persons[0].getRank(tmp[0].index),
-			self.persons[0].getRank(tmp[1].index),
-			self.persons[1].getRank(tmp[0].index),
-			self.persons[1].getRank(tmp[1].index))
+		m = max(self.persons[0].getRank(tmp[0]),
+			self.persons[0].getRank(tmp[1]),
+			self.persons[1].getRank(tmp[0]),
+			self.persons[1].getRank(tmp[1]))
 
 		#todo case of eaqul -> check min value
-		if (self.persons[0].getRank(tmp[0].index) < m and
-			self.persons[1].getRank(tmp[1].index) < m):
+		if (self.persons[0].getRank(tmp[0]) < m and
+			self.persons[1].getRank(tmp[1]) < m):
 			tmp[0].assignPerson(self.persons[0])		
 			tmp[1].assignPerson(self.persons[1])
 		else:	
@@ -1038,8 +1052,7 @@ class CyKaAlg:
 	def assignRing(self, topic, ring):
 		ring = ring[:]
 		persons = topic.persons
-		persons.sort(key=operator.methodcaller("getRank", topic.index), reverse=True)
-		#persons.sort(key=getRank(topic.index))
+		persons.sort(key=operator.methodcaller("getRank", topic), reverse=True)
 
 		ring_topics = []
 		for p in persons:
