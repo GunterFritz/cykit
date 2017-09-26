@@ -82,7 +82,10 @@ class Person:
 			out
 
 	def print_static(self):
-		print(self.name, self.satisfaction(), self.topic_A.color, "(", self.rang_A, ")", self.topic_B.color, "(", self.rang_B, ")")
+		if self.topic_A == None or self.topic_B == None:
+			print(self.name, self.satisfaction(), "-")
+		else:
+			print(self.name, self.satisfaction(), self.topic_A.color, "(", self.rang_A, ")", self.topic_B.color, "(", self.rang_B, ")")
 		#print(" ", self.topic_A.name, self.rang_A)
 		#print(" ", self.topic_B.name, self.rang_B)
 
@@ -114,6 +117,8 @@ class Person:
 		return self.topic_A.color + " - " + self.topic_B.color
 
 	def getStrut(self):
+		if self.topic_A == None or self.topic_B == None:
+			return None
 		return (self.topic_A.color, self.topic_B.color)
 
 	def switchIfBetter(self, p2):
@@ -263,6 +268,8 @@ class StructureTest:
 		errors = 0
 		for p in persons:
 			strut = p.getStrut()
+			if strut == None:
+				continue
 			tmp1 = self.iko_colors[strut[0]]
 			tmp2 = self.iko_colors[strut[1]]
 			if tmp1 is None or tmp2 is None:
@@ -1111,7 +1118,7 @@ if __name__ == '__main__':
 		if sys.argv[i] == "-f":
 			filename = sys.argv[i+1]
 
-	t = IkoTest(12, 30)
+	t = IkoTest(12, 33)
 	if filename is None:
 		t.random_init()
 	else:
