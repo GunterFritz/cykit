@@ -623,7 +623,8 @@ class Star:
 class Structure:
 	def __init__(self):
 		self.numTopics = 0		
-		self.numPersons = 0		
+		self.numPersons = 0
+		self.type = ""		
 	
 	"""
 	prints the satisfaction from all persons and calculates the average
@@ -669,6 +670,7 @@ class Ikosaeder(Structure):
 	def __init__(self, persons = 30):				
 		self.numTopics = 12
 		self.numPersons = persons
+		self.type = "Ikosaeder"
 		self.upper = None
 		self.lower = None
 		self.upper_colors = [ "white", "black", "silver", "green", "brown", "dark blue" ]
@@ -734,6 +736,7 @@ class Oktaeder:
 		self.numPersons = persons
 		self.topics = None
 		self.persons = None
+		self.type = "Oktaeder"
 
 	def build(self, topics, persons):
 		self.var = 1
